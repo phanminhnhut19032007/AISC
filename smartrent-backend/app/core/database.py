@@ -3,12 +3,18 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
 
+is_sqlite = "sqlite" in settings.DATABASE_URL
+engine_kwargs = {"echo": settings.DEBUG}
+if not is_sqlite:
+    engine_kwargs.update({
+        "pool_pre_ping": True,
+        "pool_size": 10,
+        "max_overflow": 20,
+    })
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    **engine_kwargs
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -38,7 +44,24 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables on startup (use Alembic in production)."""
+    """Create all tables on startup and seed demo data if empty."""
     async with engine.begin() as conn:
-        from app.models import base  # noqa: F401 — ensures all models are registered
+        from app.models import base  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
+
+    # Check and seed demo data if new database
+    try:
+        from app.models.user import User
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(User).limit(1))
+            if not result.scalar_one_or_none():
+                print("[RENTEASY] Empty database detected, auto-seeding demo data...")
+                from seed_data import seed
+                # Run seed in background safely
+                try:
+                    await seed()
+                except Exception as seed_err:
+                    print(f"[RENTEASY] Seed error (ignorable): {seed_err}")
+    except Exception as e:
+        print(f"[RENTEASY] DB check notice: {e}")

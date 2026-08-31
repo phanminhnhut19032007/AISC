@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://smartrent:smartrent123@localhost:5432/smartrent"
-    DATABASE_URL_SYNC: str = "postgresql://smartrent:smartrent123@localhost:5432/smartrent"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./smartrent_demo.db"
+    DATABASE_URL_SYNC: str = "sqlite:///./smartrent_demo.db"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
