@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
 
@@ -7,10 +7,16 @@ export const metadata: Metadata = {
   description: 'Nền tảng số hóa quản lý chuỗi trọ & căn hộ mini',
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className="antialiased">
+      <body className="antialiased overflow-x-hidden">
         {children}
         <Toaster
           position="top-right"

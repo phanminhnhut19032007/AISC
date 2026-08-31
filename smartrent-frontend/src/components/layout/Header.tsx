@@ -1,5 +1,5 @@
 'use client';
-import { Bell, User, Wrench, FileText, ShoppingBag, MessageSquare, Check } from 'lucide-react';
+import { Bell, User, Wrench, FileText, ShoppingBag, MessageSquare, Check, Menu } from 'lucide-react';
 import { getUser } from '@/lib/auth';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -258,9 +258,21 @@ export default function Header({ title }: { title: string }) {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 sticky top-0 z-30">
-      <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
-      <div className="flex items-center gap-3">
+    <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 w-full max-w-full">
+      <div className="flex items-center gap-2.5 min-w-0">
+        {/* Mobile Hamburger Toggle */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
+          }}
+          className="p-2 -ml-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 md:hidden transition-colors flex-shrink-0"
+          title="Mở menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <h1 className="text-base sm:text-lg font-semibold text-slate-800 truncate">{title}</h1>
+      </div>
+      <div className="flex items-center gap-3 flex-shrink-0">
         
         {/* Notification Bell Dropdown wrapper */}
         <div className="relative" ref={dropdownRef}>
