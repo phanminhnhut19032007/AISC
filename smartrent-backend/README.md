@@ -1,153 +1,95 @@
-# SmartRent Backend
+# 🏠 REASY Backend — RESTful API & Realtime WebSocket Server
 
-Nền tảng số hóa quản lý chuỗi trọ & căn hộ mini — Backend API (FastAPI + PostgreSQL)
+> Hệ thống máy chủ API hiệu năng cao cho nền tảng quản lý nhà trọ và căn hộ mini **REASY**, xây dựng trên nền tảng **FastAPI (Python 3.11+)**, hỗ trợ cơ sở dữ liệu **SQLite / PostgreSQL**, xác thực bảo mật **JWT**, **WebSocket Realtime Chat**, và tích hợp **VietQR chuẩn ngân hàng**.
 
-## 🚀 Khởi động nhanh
-
-### Option 1: Docker Compose (khuyến nghị)
-
-```bash
-# Clone và setup
-cp .env.example .env
-
-# Khởi động toàn bộ stack (API + PostgreSQL + Redis)
-docker compose up -d
-
-# Xem logs
-docker compose logs -f api
-```
-
-API sẽ chạy tại: http://localhost:8000  
-Swagger Docs: http://localhost:8000/docs
+🌐 **API Docs (Swagger UI):** [https://aisc-1.onrender.com/docs](https://aisc-1.onrender.com/docs)  
+📖 **API Redoc:** [https://aisc-1.onrender.com/redoc](https://aisc-1.onrender.com/redoc)
 
 ---
 
-### Option 2: Local (không dùng Docker)
+## 🛠️ Danh sách Tech Stack Backend
 
-```bash
-# 1. Tạo virtual environment
-python -m venv venv
-venv\Scripts\activate   # Windows
-# source venv/bin/activate  # macOS/Linux
-
-# 2. Cài dependencies
-pip install -r requirements.txt
-
-# 3. Setup .env
-cp .env.example .env
-# Chỉnh sửa DATABASE_URL trong .env để trỏ đến PostgreSQL local của bạn
-
-# 4. Chạy server
-uvicorn app.main:app --reload
-```
+| Hạng mục | Công nghệ / Thư viện | Phiên bản | Mục đích sử dụng |
+| :--- | :--- | :--- | :--- |
+| **Core Framework** | `FastAPI` | `>= 0.111.0` | Khung ứng dụng API bất đồng bộ (Async), tốc độ cao |
+| **ASGI Server** | `Uvicorn[standard]` | `>= 0.30.0` | Máy chủ ASGI chạy ứng dụng FastAPI đa luồng |
+| **Ngôn ngữ** | `Python` | `>= 3.10` (Khuyên dùng 3.11+) | Ngôn ngữ lập trình chính |
+| **Database ORM** | `SQLAlchemy (Async)` | `>= 2.0.30` | Object Relational Mapper xử lý truy vấn bất đồng bộ |
+| **Database Migration** | `Alembic` | `>= 1.13.0` | Quản lý phiên bản cấu trúc cơ sở dữ liệu |
+| **Database Drivers** | `aiosqlite` / `asyncpg` | `>= 0.20.0` | Driver kết nối SQLite và PostgreSQL async |
+| **Data Validation** | `Pydantic v2` / `Pydantic-Settings` | `>= 2.7.0` | Kiểm tra định dạng dữ liệu đầu vào/ra và biến môi trường |
+| **Bảo mật & Auth** | `python-jose[cryptography]` | `>= 3.3.0` | Tạo và giải mã JSON Web Tokens (JWT) |
+| **Mã hóa mật khẩu** | `passlib[bcrypt]` | `>= 1.7.4` | Băm và bảo mật mật khẩu người dùng chuẩn Bcrypt |
+| **Giao tiếp Realtime** | `FastAPI WebSockets` | Built-in | Chat nhóm chung tòa nhà và nhắn tin riêng cư dân |
+| **Thanh toán & QR** | `VietQR Engine` / `qrcode[pil]` | `>= 7.4.2` | Sinh chuỗi và mã VietQR chuẩn NAPAS tự động theo số tiền |
+| **Xử lý ảnh & OCR** | `Pillow (PIL)` | `>= 10.3.0` | Xử lý ảnh chụp công tơ điện nước |
+| **HTTP Client** | `httpx` | `>= 0.27.0` | Gửi request HTTP async cho webhook và dịch vụ ngoài |
+| **Container & Cloud** | `Docker` / `Render Blueprint` | Latest | Đóng gói container và tự động triển khai lên Render.com |
 
 ---
 
-## 📂 Cấu trúc thư mục
+## 📂 Cấu trúc thư mục Backend
 
 ```
 smartrent-backend/
 ├── app/
-│   ├── main.py                    # FastAPI entry point
-│   ├── core/
-│   │   ├── config.py              # Pydantic Settings (.env)
-│   │   ├── database.py            # Async SQLAlchemy engine
-│   │   └── security.py            # JWT + bcrypt
-│   ├── models/                    # SQLAlchemy ORM models
-│   │   ├── user.py                # User (Owner/Tenant/Technician)
-│   │   ├── building.py            # Building + Room
-│   │   ├── contract.py            # Contract
-│   │   └── invoice.py             # MeterReading + Invoice + Payment
-│   │   └── ticket.py              # Ticket + TicketRating
-│   ├── schemas/                   # Pydantic v2 request/response schemas
+│   ├── main.py                    # Điểm khởi động FastAPI, CORS & Database Lifespan
 │   ├── api/
-│   │   ├── deps.py                # DB, Auth, RBAC dependencies
+│   │   ├── deps.py                # Dependencies phân quyền (get_current_user, require_role)
 │   │   └── v1/
-│   │       ├── auth.py            # Register, Login, /me
-│   │       ├── buildings.py       # Building + Room CRUD
-│   │       ├── meter_readings.py  # OCR Upload + readings
-│   │       ├── invoices.py        # Invoice generation + management
-│   │       ├── tickets.py         # Maintenance ticket lifecycle
-│   │       └── webhooks.py        # SePay/Casso payment webhook
-│   └── services/
-│       ├── ocr_service.py         # Google Vision API OCR
-│       ├── billing_service.py     # Auto-calculate invoice amounts
-│       ├── vietqr_service.py      # VietQR code generation
-│       ├── payment_service.py     # Auto-reconciliation logic
-│       └── notification_service.py # Zalo ZNS + Firebase FCM
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── .env.example
+│   │       ├── router.py          # Tổng hợp router v1
+│   │       ├── auth.py            # API Đăng ký / Đăng nhập / Lấy thông tin cá nhân
+│   │       ├── buildings.py       # API Quản lý Tòa nhà & Phòng
+│   │       ├── invoices.py        # API Tạo, Xem & Chốt Hóa đơn dịch vụ
+│   │       ├── meter_readings.py  # API Ghi chỉ số Điện & Nước
+│   │       ├── tickets.py         # API Quản lý Sự cố & Báo trì
+│   │       ├── chat.py            # API Lịch sử chat & WebSocket Realtime Server
+│   │       ├── webhooks.py        # Webhook nhận kết quả thanh toán tự động (SePay/Casso)
+│   │       └── ocr.py             # API Nhận diện chỉ số đồng hồ
+│   ├── core/
+│   │   ├── config.py              # Cấu hình biến môi trường & CORS
+│   │   ├── database.py            # Khởi tạo SQLAlchemy Engine & Auto-seed
+│   │   └── security.py            # Xử lý băm Bcrypt & sinh JWT token
+│   ├── models/                    # Khai báo cấu trúc bảng cơ sở dữ liệu
+│   │   ├── user.py                # Bảng Users (OWNER, TENANT, TECHNICIAN, SUPERADMIN)
+│   │   ├── building.py            # Bảng Buildings & Rooms
+│   │   ├── contract.py            # Bảng Contracts (Hợp đồng thuê)
+│   │   ├── invoice.py             # Bảng Invoices, MeterReadings & Payments
+│   │   ├── ticket.py              # Bảng Tickets & TicketRatings
+│   │   └── chat.py                # Bảng ChatMessages
+│   ├── schemas/                   # Pydantic Schemas validate DTO
+│   └── services/                  # Business Logic Services (VietQR, Billing, Notification)
+├── seed_data.py                   # Script nạp dữ liệu mẫu ban đầu
+├── Dockerfile                     # Cấu hình Docker Container
+├── render.yaml                    # Cấu hình Deploy Render.com
+└── requirements.txt               # Danh sách thư viện cần cài đặt
 ```
 
 ---
 
-## 🔑 API Endpoints chính
+## ⚡ Hướng dẫn Cài đặt & Chạy Local
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| `POST` | `/api/v1/auth/register` | Đăng ký tài khoản |
-| `POST` | `/api/v1/auth/login` | Đăng nhập → JWT token |
-| `GET` | `/api/v1/auth/me` | Thông tin tài khoản |
-| `POST` | `/api/v1/buildings` | Tạo tòa nhà (OWNER only) |
-| `POST` | `/api/v1/rooms` | Thêm phòng |
-| `POST` | `/api/v1/meter-readings/ocr-upload` | 🔑 Upload ảnh đồng hồ → OCR |
-| `POST` | `/api/v1/invoices/generate` | 🔑 Tự động tính & phát hành hóa đơn |
-| `GET` | `/api/v1/invoices` | Danh sách hóa đơn |
-| `POST` | `/api/v1/tickets` | Tạo ticket sự cố |
-| `PATCH` | `/api/v1/tickets/{id}/assign` | Gán thợ |
-| `PATCH` | `/api/v1/tickets/{id}/status` | Cập nhật trạng thái |
-| `POST` | `/api/v1/webhooks/sepay` | 🔑 SePay payment webhook |
-| `POST` | `/api/v1/webhooks/casso` | Casso payment webhook |
-
----
-
-## 🎯 Demo 3 màn hình (AISC Showcase)
-
-### 1. OCR Flow
+### 1. Tạo môi trường ảo & cài thư viện:
 ```bash
-curl -X POST http://localhost:8000/api/v1/meter-readings/ocr-upload \
-  -H "Authorization: Bearer <token>" \
-  -F "room_id=<room_uuid>" \
-  -F "meter_type=ELECTRICITY" \
-  -F "month=8" \
-  -F "year=2025" \
-  -F "image=@/path/to/meter_photo.jpg"
+cd smartrent-backend
+
+# Tạo môi trường ảo
+python -m venv venv
+
+# Kích hoạt môi trường:
+# Trên Windows:
+.\venv\Scripts\activate
+# Trên macOS / Linux:
+source venv/bin/activate
+
+# Cài đặt thư viện:
+pip install -r requirements.txt
 ```
 
-### 2. Generate Invoice + VietQR
+### 2. Khởi chạy Server:
 ```bash
-curl -X POST http://localhost:8000/api/v1/invoices/generate \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"room_id": "<uuid>", "month": 8, "year": 2025}'
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### 3. Simulate Payment Webhook (test auto-reconciliation)
-```bash
-curl -X POST http://localhost:8000/api/v1/webhooks/sepay \
-  -H "Content-Type: application/json" \
-  -d '{
-    "transferAmount": 2500000,
-    "content": "Thanh toan SR101A0825ABCD tien phong thang 8",
-    "code": "SR101A0825ABCD",
-    "referenceCode": "TXN20250801123456"
-  }'
-```
-
-→ Invoice tự động chuyển sang **PAID** ✅
-
----
-
-## 🛠️ Tech Stack
-
-- **FastAPI** 0.111 — Async Python web framework
-- **SQLAlchemy 2.0** — Async ORM với PostgreSQL
-- **Pydantic v2** — Validation & serialization
-- **PostgreSQL 16** — Main database
-- **Redis** — Cache & Celery task queue
-- **Google Cloud Vision** — OCR meter reading
-- **SePay / Casso** — Open Banking webhook
-- **Zalo ZNS** — Payment & ticket notifications
-- **VietQR** — Dynamic QR code generation
+* **Swagger API Docs:** `http://127.0.0.1:8000/docs`
+* **Healthcheck:** `http://127.0.0.1:8000/`
