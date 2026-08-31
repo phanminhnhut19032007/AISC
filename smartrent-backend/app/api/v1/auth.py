@@ -1,0 +1,70 @@
+"""Auth routes — Register and Login."""
+from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import select
+
+from app.api.deps import DB, CurrentUser
+from app.core.security import hash_password, verify_password, create_access_token
+from app.models.user import User
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut, UpdateFCMToken
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(body: RegisterRequest, db: DB):
+    """Đăng ký tài khoản mới."""
+    # Check phone uniqueness
+    existing = await db.execute(select(User).where(User.phone == body.phone))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Số điện thoại đã được đăng ký")
+
+    user = User(
+        full_name=body.full_name,
+        phone=body.phone,
+        email=body.email,
+        hashed_password=hash_password(body.password),
+        role=body.role,
+    )
+    db.add(user)
+    await db.flush()
+
+    token = create_access_token(str(user.id))
+    return TokenResponse(
+        access_token=token,
+        user_id=str(user.id),
+        role=user.role,
+        full_name=user.full_name,
+    )
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(body: LoginRequest, db: DB):
+    """Đăng nhập bằng số điện thoại và mật khẩu."""
+    result = await db.execute(select(User).where(User.phone == body.phone))
+    user = result.scalar_one_or_none()
+
+    if not user or not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Số điện thoại hoặc mật khẩu không đúng")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
+
+    token = create_access_token(str(user.id))
+    return TokenResponse(
+        access_token=token,
+        user_id=str(user.id),
+        role=user.role,
+        full_name=user.full_name,
+    )
+
+
+@router.get("/me", response_model=UserOut)
+async def get_me(current_user: CurrentUser):
+    """Lấy thông tin tài khoản hiện tại."""
+    return UserOut.model_validate(current_user)
+
+
+@router.patch("/fcm-token")
+async def update_fcm_token(body: UpdateFCMToken, current_user: CurrentUser, db: DB):
+    """Cập nhật FCM token cho push notification."""
+    current_user.fcm_token = body.fcm_token
+    return {"ok": True}
