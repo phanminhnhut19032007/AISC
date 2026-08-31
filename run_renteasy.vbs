@@ -21,17 +21,24 @@ f.Close
 ' BUOC 0: Don dep cac tien trinh cu
 ' ==========================================
 oShell.Run """" & scriptDir & "\kill_servers.bat""", 0, True
-WScript.Sleep 3000
+WScript.Sleep 2500
 
 ' ==========================================
-' BUOC 1: Khoi dong Backend (FastAPI)
+' BUOC 1: Khoi dong Backend (FastAPI) - Tu dong tim Python / venv bat ky thu muc nao
 ' ==========================================
-oShell.Run "cmd /k ""cd /d D:\AISC\smartrent-backend && set DATABASE_URL=sqlite+aiosqlite:///./smartrent_demo.db && set DATABASE_URL_SYNC=sqlite:///./smartrent_demo.db && set PYTHONIOENCODING=utf-8 && .\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000""", 1, False
+Dim pyCmd
+If fso.FileExists(scriptDir & "\smartrent-backend\venv\Scripts\python.exe") Then
+    pyCmd = ".\venv\Scripts\python.exe"
+Else
+    pyCmd = "python"
+End If
+
+oShell.Run "cmd /k ""cd /d """ & scriptDir & "\smartrent-backend"" && set DATABASE_URL=sqlite+aiosqlite:///./smartrent_demo.db && set DATABASE_URL_SYNC=sqlite:///./smartrent_demo.db && set PYTHONIOENCODING=utf-8 && " & pyCmd & " -m uvicorn app.main:app --host 127.0.0.1 --port 8000""", 1, False
 
 ' ==========================================
-' BUOC 2: Khoi dong Frontend (Next.js)
+' BUOC 2: Khoi dong Frontend (Next.js) - Duong dan dong linh hoat
 ' ==========================================
-oShell.Run "cmd /k ""cd /d D:\AISC\smartrent-frontend && npm run dev""", 1, False
+oShell.Run "cmd /k ""cd /d """ & scriptDir & "\smartrent-frontend"" && npm run dev""", 1, False
 
 ' ==========================================
 ' BUOC 3: Doi 5 giay cho server san sang
@@ -39,7 +46,7 @@ oShell.Run "cmd /k ""cd /d D:\AISC\smartrent-frontend && npm run dev""", 1, Fals
 WScript.Sleep 5000
 
 ' ==========================================
-' BUOC 4: Mo trinh duyet Coc Coc (Chi mo MOT LAN duy nhat)
+' BUOC 4: Mo trinh duyet (Coc Coc -> Edge -> Chrome -> Mac dinh)
 ' ==========================================
 Dim coccocPath1 : coccocPath1 = "C:\Program Files\CocCoc\Browser\Application\browser.exe"
 Dim coccocPath2 : coccocPath2 = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\CocCoc\Browser\Application\browser.exe"
