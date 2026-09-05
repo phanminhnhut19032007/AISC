@@ -35,8 +35,6 @@ class TokenResponse(BaseModel):
     full_name: str
 
 
-# ─── User ────────────────────────────────────────────────────────────────────
-
 class UserOut(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -47,6 +45,13 @@ class UserOut(BaseModel):
     role: UserRole
     avatar_url: Optional[str] = None
     is_active: bool
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
 
 
 class UpdateFCMToken(BaseModel):

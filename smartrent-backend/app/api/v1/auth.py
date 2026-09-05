@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.api.deps import DB, CurrentUser
 from app.core.security import hash_password, verify_password, create_access_token
 from app.models.user import User
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut, UpdateFCMToken
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut, UserUpdate, UpdateFCMToken
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -60,6 +60,27 @@ async def login(body: LoginRequest, db: DB):
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user: CurrentUser):
     """Lấy thông tin tài khoản hiện tại."""
+    return UserOut.model_validate(current_user)
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(body: UserUpdate, current_user: CurrentUser, db: DB):
+    """Cập nhật thông tin cá nhân (họ tên, email, sđt, mật khẩu)."""
+    if body.full_name is not None and body.full_name.strip():
+        current_user.full_name = body.full_name.strip()
+    if body.email is not None:
+        current_user.email = body.email.strip() if body.email.strip() else None
+    if body.phone is not None and body.phone.strip():
+        cleaned_phone = body.phone.strip()
+        if cleaned_phone != current_user.phone:
+            existing = await db.execute(select(User).where(User.phone == cleaned_phone, User.id != current_user.id))
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="Số điện thoại này đã được sử dụng")
+            current_user.phone = cleaned_phone
+    if body.password is not None and body.password.strip():
+        current_user.hashed_password = hash_password(body.password.strip())
+
+    await db.flush()
     return UserOut.model_validate(current_user)
 
 

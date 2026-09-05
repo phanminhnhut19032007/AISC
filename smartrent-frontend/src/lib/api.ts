@@ -116,6 +116,8 @@ export const authApi = {
   register: (data: { full_name: string; phone: string; password: string; role: string }) =>
     api.post<TokenResponse>('/auth/register', data),
   me: () => api.get<User>('/auth/me'),
+  updateMe: (data: { full_name?: string; phone?: string; email?: string; password?: string }) =>
+    api.patch<User>('/auth/me', data),
 };
 
 // ---- Buildings API ----
