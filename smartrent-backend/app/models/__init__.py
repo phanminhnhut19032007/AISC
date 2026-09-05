@@ -6,3 +6,4 @@ from app.models.contract import Contract, ContractStatus  # noqa
 from app.models.invoice import MeterReading, MeterType, Invoice, InvoiceStatus, Payment, PaymentChannel  # noqa
 from app.models.ticket import Ticket, TicketStatus, TicketPriority, TicketRating  # noqa
 from app.models.chat import ChatMessage  # noqa
+from app.models.emergency import EmergencyAlert, EmergencyType, EmergencyStatus  # noqa

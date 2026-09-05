@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Building2, LayoutDashboard,
-  FileText, Wrench, LogOut, ShoppingBag, MessageSquare, X
+  FileText, Wrench, LogOut, ShoppingBag, MessageSquare, X, Siren, AlertOctagon
 } from 'lucide-react';
 import { clearAuth, getUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/dashboard/tickets', label: 'Bảo trì & Sửa chữa', icon: Wrench },
   { href: '/dashboard/unipack', label: 'Tiện ích UniPack', icon: ShoppingBag },
   { href: '/dashboard/chat', label: 'Chat', icon: MessageSquare },
+  { href: '/dashboard/sos', label: 'Tin Khẩn Cấp', icon: Siren, isSos: true },
 ];
 
 export default function Sidebar() {
@@ -58,6 +59,9 @@ export default function Sidebar() {
     })
     .map((item) => {
       if (user?.role === 'TENANT') {
+        if (item.href === '/dashboard/sos') {
+          return { ...item, label: 'Báo Khẩn Cấp' };
+        }
         if (item.href === '/dashboard/invoices') {
           return { ...item, label: 'Hóa đơn phòng' };
         }
@@ -113,9 +117,27 @@ export default function Sidebar() {
         </div>
 
         {/* Nav Links */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {filteredNavItems.map(({ href, label, icon: Icon }) => {
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+          {filteredNavItems.map(({ href, label, icon: Icon, isSos }) => {
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+            
+            if (isSos) {
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                    active
+                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/40 ring-1 ring-red-400'
+                      : 'text-red-400 bg-red-950/30 border border-red-500/30 hover:bg-red-600 hover:text-white hover:border-red-600 shadow-sm'
+                  }`}
+                >
+                  <Icon className="w-[18px] h-[18px] flex-shrink-0 text-red-400 group-hover:text-white" />
+                  <span className="truncate">{label}</span>
+                </Link>
+              );
+            }
+
             return (
               <Link
                 key={href}

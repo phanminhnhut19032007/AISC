@@ -211,3 +211,31 @@ export const chatApi = {
   listMembers: (buildingId: string) =>
     api.get<ChatMember[]>(`/chat/${buildingId}/members`),
 };
+
+// ---- Emergency SOS API ----
+export interface EmergencyAlert {
+  id: string;
+  room_number: string;
+  building_name: string;
+  sender_id: string;
+  sender_name: string;
+  sender_phone: string;
+  emergency_type: 'FIRE' | 'THEFT' | 'MEDICAL' | 'GAS_LEAK' | 'OTHER';
+  description?: string;
+  status: 'ACTIVE' | 'ACKNOWLEDGED' | 'RESOLVED';
+  acknowledged_by?: string;
+  created_at: string;
+}
+
+export const emergencyApi = {
+  trigger: (data: {
+    room_number?: string;
+    building_name?: string;
+    emergency_type: string;
+    description?: string;
+  }) => api.post<EmergencyAlert>('/emergency/sos', data),
+  getActive: () => api.get<EmergencyAlert[]>('/emergency/active'),
+  list: () => api.get<EmergencyAlert[]>('/emergency/list'),
+  acknowledge: (id: string) => api.post<EmergencyAlert>(`/emergency/${id}/acknowledge`),
+  resolve: (id: string) => api.post<EmergencyAlert>(`/emergency/${id}/resolve`),
+};
