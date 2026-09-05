@@ -121,7 +121,7 @@ export default function DashboardPage() {
       if (buildings.length > 0) {
         return { name: buildings[0].name, address: buildings[0].address };
       }
-      return { name: 'Nhà trọ Renteasy', address: 'Đang cập nhật' };
+      return { name: 'Nhà trọ REASY', address: 'Đang cập nhật' };
     };
 
     return (
@@ -134,7 +134,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-xl md:text-2xl font-black">Xin chào, Phòng {getRoomName(latestInvoice?.room_id || '')}!</h2>
               <p className="text-xs text-blue-100 mt-1 max-w-md leading-relaxed">
-                Chào mừng bạn đến với RENTEASY. Tất cả thông tin thuê phòng, hóa đơn và sự cố được cập nhật liên tục tại đây.
+                Chào mừng bạn đến với REASY. Tất cả thông tin thuê phòng, hóa đơn và sự cố được cập nhật liên tục tại đây.
               </p>
             </div>
             <div className="hidden md:flex w-14 h-14 bg-white/10 rounded-2xl items-center justify-center backdrop-blur shadow-inner">

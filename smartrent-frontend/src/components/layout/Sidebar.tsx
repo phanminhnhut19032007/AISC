@@ -97,7 +97,7 @@ export default function Sidebar() {
                 </span>
               </div>
               <p className="text-slate-400 text-[11px] truncate">
-                {user?.role === 'TENANT' ? 'Cư dân RENTEASY' : 'Bảng điều khiển Admin'}
+                {user?.role === 'TENANT' ? 'Cư dân REASY' : 'Bảng điều khiển Admin'}
               </p>
             </div>
           </Link>

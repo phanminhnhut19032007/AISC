@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
-  title: 'RENTEASY - Quản lý trọ thông minh',
+  title: 'REASY - Quản lý trọ thông minh',
   description: 'Nền tảng số hóa quản lý chuỗi trọ & căn hộ mini',
 };
 

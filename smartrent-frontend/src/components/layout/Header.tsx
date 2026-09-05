@@ -341,7 +341,7 @@ export default function Header({ title }: { title: string }) {
               </div>
 
               <div className="p-2 border-t border-slate-50 text-center bg-slate-50/50">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hệ thống thông báo RENTEASY</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hệ thống thông báo REASY</span>
               </div>
             </div>
           )}
