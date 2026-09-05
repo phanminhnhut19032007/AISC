@@ -118,6 +118,8 @@ export const authApi = {
   me: () => api.get<User>('/auth/me'),
   updateMe: (data: { full_name?: string; phone?: string; email?: string; password?: string }) =>
     api.patch<User>('/auth/me', data),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api.post<{ message: string }>('/auth/change-password', data),
 };
 
 // ---- Buildings API ----

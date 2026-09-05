@@ -1,7 +1,7 @@
 'use client';
 import { 
   Bell, User, Wrench, FileText, ShoppingBag, MessageSquare, Check, Menu, 
-  UserCog, LogOut, X, Phone, Mail, Lock, Shield, Sparkles, ChevronDown 
+  UserCog, LogOut, X, Phone, Mail, Lock, KeyRound, Eye, EyeOff, Shield, RotateCcw, ChevronDown 
 } from 'lucide-react';
 import { getUser, clearAuth } from '@/lib/auth';
 import { useEffect, useState, useRef } from 'react';
@@ -29,18 +29,30 @@ export default function Header({ title }: { title: string }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // User Profile Dropdown & Modal states
+  // User Profile Dropdown state
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
+  // Edit Profile Modal states
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState({
     full_name: '',
     phone: '',
-    email: '',
-    password: ''
+    email: ''
   });
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Change Password Modal states
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const formatMoney = (n: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -80,7 +92,6 @@ export default function Header({ title }: { title: string }) {
 
       if (currentUser.role === 'OWNER' || currentUser.role === 'SUPERADMIN') {
         // Owner notifications:
-        // A. OPEN tickets reported by tenants
         tickets
           .filter((t) => t.status === 'OPEN')
           .forEach((t) => {
@@ -97,7 +108,6 @@ export default function Header({ title }: { title: string }) {
             });
           });
 
-        // B. Pending / Sent Invoices
         invoices
           .filter((i) => i.status === 'SENT' || i.status === 'OVERDUE')
           .forEach((i) => {
@@ -115,7 +125,6 @@ export default function Header({ title }: { title: string }) {
           });
       } else {
         // Tenant notifications:
-        // A. Invoices for this tenant
         invoices
           .filter((i) => i.status === 'SENT' || i.status === 'OVERDUE')
           .forEach((i) => {
@@ -131,7 +140,6 @@ export default function Header({ title }: { title: string }) {
             });
           });
 
-        // B. Ticket status updates
         tickets.forEach((t) => {
           if (t.status !== 'OPEN') {
             const id = `ticket_status_${t.id}_${t.status}`;
@@ -151,7 +159,7 @@ export default function Header({ title }: { title: string }) {
         });
       }
 
-      // UniPack demo order notifications
+      // UniPack demo orders
       try {
         const rawOrders = localStorage.getItem('renteasy_unipack_orders');
         if (rawOrders) {
@@ -173,7 +181,6 @@ export default function Header({ title }: { title: string }) {
         // ignore
       }
 
-      // Sort by newest
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNotifications(list);
     } catch (e) {
@@ -188,13 +195,11 @@ export default function Header({ title }: { title: string }) {
       setProfileForm({
         full_name: currentUser.full_name || '',
         phone: currentUser.phone || '',
-        email: currentUser.email || '',
-        password: ''
+        email: currentUser.email || ''
       });
       fetchLiveNotifications(currentUser);
     }
 
-    // Try to fetch latest me from API
     try {
       const res = await authApi.me();
       if (res.data) {
@@ -210,8 +215,7 @@ export default function Header({ title }: { title: string }) {
         setProfileForm({
           full_name: res.data.full_name || '',
           phone: res.data.phone || '',
-          email: res.data.email || '',
-          password: ''
+          email: res.data.email || ''
         });
       }
     } catch (err) {
@@ -227,7 +231,6 @@ export default function Header({ title }: { title: string }) {
   useEffect(() => {
     loadUserData();
 
-    // Auto-poll notifications every 10 seconds
     const interval = setInterval(() => {
       const currentUser = getUser();
       if (currentUser) {
@@ -264,7 +267,7 @@ export default function Header({ title }: { title: string }) {
 
   const handleLogout = () => {
     clearAuth();
-    toast.success('Đã đăng xuất thành công');
+    toast.success('Đã đăng xuất tài khoản thành công');
     router.push('/login');
   };
 
@@ -273,10 +276,22 @@ export default function Header({ title }: { title: string }) {
     setProfileForm({
       full_name: user?.full_name || '',
       phone: user?.phone || '',
-      email: user?.email || '',
-      password: ''
+      email: user?.email || ''
     });
     setShowEditProfileModal(true);
+  };
+
+  const handleOpenChangePassword = () => {
+    setShowUserMenu(false);
+    setPasswordForm({
+      current_password: '',
+      new_password: '',
+      confirm_password: ''
+    });
+    setShowCurrentPass(false);
+    setShowNewPass(false);
+    setShowConfirmPass(false);
+    setShowChangePasswordModal(true);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -295,9 +310,6 @@ export default function Header({ title }: { title: string }) {
         phone: profileForm.phone.trim(),
         email: profileForm.email.trim() || undefined,
       };
-      if (profileForm.password.trim()) {
-        payload.password = profileForm.password.trim();
-      }
 
       const res = await authApi.updateMe(payload);
       
@@ -320,6 +332,38 @@ export default function Header({ title }: { title: string }) {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordForm.current_password) {
+      return toast.error('Vui lòng nhập mật khẩu hiện tại');
+    }
+    if (!passwordForm.new_password) {
+      return toast.error('Vui lòng nhập mật khẩu mới');
+    }
+    if (passwordForm.new_password.length < 6) {
+      return toast.error('Mật khẩu mới phải có tối thiểu 6 ký tự');
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      return toast.error('Xác nhận mật khẩu mới không khớp');
+    }
+
+    setChangingPassword(true);
+    try {
+      await authApi.changePassword({
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password
+      });
+
+      toast.success('Đổi mật khẩu thành công!');
+      setShowChangePasswordModal(false);
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Mật khẩu hiện tại không chính xác');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const getDisplayName = () => {
@@ -331,7 +375,7 @@ export default function Header({ title }: { title: string }) {
 
   const getDisplayRole = () => {
     if (user?.role === 'TENANT') {
-      return `Phòng #${roomNumber || '101'}`;
+      return `Cư dân phòng #${roomNumber || '101'}`;
     }
     return 'Chủ trọ / Quản lý';
   };
@@ -363,7 +407,6 @@ export default function Header({ title }: { title: string }) {
     ));
     setShowDropdown(false);
 
-    // Redirect to targets
     router.push(n.targetUrl);
   };
 
@@ -505,47 +548,51 @@ export default function Header({ title }: { title: string }) {
             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180 text-blue-600' : ''}`} />
           </button>
 
-          {/* Floating User Menu Popover */}
+          {/* Floating User Menu Popover (Matching Design in media_1788608015491.png) */}
           {showUserMenu && (
-            <div className="absolute right-0 mt-2.5 w-64 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 mt-2.5 w-72 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150">
+              
               {/* User Header Summary */}
-              <div className="p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-md">
-                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-sm text-white truncate">{getDisplayName()}</h4>
-                    <span className="inline-block text-[10px] font-semibold text-sky-300 bg-white/10 px-2 py-0.5 rounded-md mt-0.5">
-                      {user?.role === 'TENANT' ? `Cư dân phòng #${roomNumber || '101'}` : 'Chủ trọ / Quản lý'}
-                    </span>
-                  </div>
+              <div className="p-4 bg-slate-900 text-white flex items-center gap-3.5">
+                <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-lg text-white shadow-md flex-shrink-0">
+                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
                 </div>
-                {user?.phone && (
-                  <p className="text-[11px] text-slate-300 mt-2.5 flex items-center gap-1.5">
-                    <Phone className="w-3 h-3 text-sky-400" />
-                    <span>{user.phone}</span>
-                  </p>
-                )}
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-extrabold text-sm text-white truncate">{getDisplayName()}</h4>
+                  <span className="inline-block text-[10px] font-semibold text-slate-300 bg-white/10 px-2 py-0.5 rounded-md mt-1">
+                    {getDisplayRole()}
+                  </span>
+                </div>
               </div>
 
               {/* Action Buttons */}
               <div className="p-2 space-y-1">
+                {/* 1. Chỉnh sửa thông tin cá nhân */}
                 <button
                   onClick={handleOpenEditProfile}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50/70 transition-colors text-left cursor-pointer"
                 >
-                  <UserCog className="w-4 h-4 text-blue-500" />
+                  <UserCog className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <span>Chỉnh sửa thông tin cá nhân</span>
+                </button>
+
+                {/* 2. Đổi mật khẩu */}
+                <button
+                  onClick={handleOpenChangePassword}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50/70 transition-colors text-left cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <span>Đổi mật khẩu</span>
                 </button>
 
                 <div className="h-[1px] bg-slate-100 my-1" />
 
+                {/* 3. Đăng xuất tài khoản */}
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4 text-red-500" />
+                  <LogOut className="w-4 h-4 text-red-500 flex-shrink-0" />
                   <span>Đăng xuất tài khoản</span>
                 </button>
               </div>
@@ -565,7 +612,7 @@ export default function Header({ title }: { title: string }) {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 text-base">Thông tin cá nhân</h3>
-                  <p className="text-[11px] text-slate-400">Cập nhật họ tên, số điện thoại &amp; mật khẩu</p>
+                  <p className="text-[11px] text-slate-400">Cập nhật họ tên, số điện thoại &amp; email</p>
                 </div>
               </div>
               <button 
@@ -624,21 +671,6 @@ export default function Header({ title }: { title: string }) {
                 </div>
               </div>
 
-              {/* Đổi mật khẩu */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Mật khẩu mới (Bỏ trống nếu không đổi)</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="password"
-                    value={profileForm.password}
-                    onChange={(e) => setProfileForm({ ...profileForm, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
-
               <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -653,6 +685,115 @@ export default function Header({ title }: { title: string }) {
                   className="btn-primary py-2.5 px-5 font-bold text-xs shadow-md shadow-blue-600/20 cursor-pointer disabled:opacity-50"
                 >
                   {savingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4. CHANGE PASSWORD MODAL (Matching Exact Design in media_1788608039205.png) */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowChangePasswordModal(false)}>
+          <div className="bg-[#f1f3f9] rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 p-6 sm:p-7" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header with rounded light blue box */}
+            <div className="flex items-center gap-3.5 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-[#dbe8fc] text-[#2563eb] flex items-center justify-center shadow-xs">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-[#0f172a] text-lg">Đổi mật khẩu</h3>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              
+              {/* Mật khẩu hiện tại * */}
+              <div>
+                <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
+                  Mật khẩu hiện tại *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    required
+                    value={passwordForm.current_password}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                    placeholder="Nhập mật khẩu cũ"
+                    className="w-full bg-[#e7ebf4]/70 border border-transparent rounded-xl pl-4 pr-10 py-3 text-xs text-slate-800 placeholder-slate-400 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer p-1"
+                  >
+                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Mật khẩu mới * */}
+              <div>
+                <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
+                  Mật khẩu mới *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    required
+                    value={passwordForm.new_password}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                    placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự...)"
+                    className="w-full bg-[#e7ebf4]/70 border border-transparent rounded-xl pl-4 pr-10 py-3 text-xs text-slate-800 placeholder-slate-400 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer p-1"
+                  >
+                    {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Xác nhận mật khẩu mới * */}
+              <div>
+                <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
+                  Xác nhận mật khẩu mới *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPass ? 'text' : 'password'}
+                    required
+                    value={passwordForm.confirm_password}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                    placeholder="Nhập lại mật khẩu mới"
+                    className="w-full bg-[#e7ebf4]/70 border border-transparent rounded-xl pl-4 pr-10 py-3 text-xs text-slate-800 placeholder-slate-400 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer p-1"
+                  >
+                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="pt-3 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePasswordModal(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {changingPassword ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
                 </button>
               </div>
             </form>

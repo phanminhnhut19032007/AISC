@@ -54,5 +54,10 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class UpdateFCMToken(BaseModel):
     fcm_token: str

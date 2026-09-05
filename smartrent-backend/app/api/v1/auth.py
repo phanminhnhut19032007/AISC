@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.api.deps import DB, CurrentUser
 from app.core.security import hash_password, verify_password, create_access_token
 from app.models.user import User
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut, UserUpdate, UpdateFCMToken
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut, UserUpdate, ChangePasswordRequest, UpdateFCMToken
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -82,6 +82,18 @@ async def update_me(body: UserUpdate, current_user: CurrentUser, db: DB):
 
     await db.flush()
     return UserOut.model_validate(current_user)
+
+
+@router.post("/change-password")
+async def change_password(body: ChangePasswordRequest, current_user: CurrentUser, db: DB):
+    """Đổi mật khẩu người dùng với xác thực mật khẩu hiện tại."""
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Mật khẩu hiện tại không chính xác")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Mật khẩu mới phải có tối thiểu 6 ký tự")
+    current_user.hashed_password = hash_password(body.new_password)
+    await db.flush()
+    return {"message": "Đổi mật khẩu thành công"}
 
 
 @router.patch("/fcm-token")
