@@ -51,14 +51,19 @@ export default function Sidebar() {
   const filteredNavItems = navItems
     .filter((item) => {
       if (user?.role === 'TENANT') {
-        // Tenant doesn't see buildings list or invoices tab in sidebar
-        return item.href !== '/dashboard/buildings' && item.href !== '/dashboard/invoices';
+        // Tenant doesn't see buildings management tab in sidebar
+        return item.href !== '/dashboard/buildings';
       }
       return true;
     })
     .map((item) => {
-      if (user?.role === 'TENANT' && item.href === '/dashboard/tickets') {
-        return { ...item, label: 'Báo cáo sự cố' };
+      if (user?.role === 'TENANT') {
+        if (item.href === '/dashboard/invoices') {
+          return { ...item, label: 'Hóa đơn phòng' };
+        }
+        if (item.href === '/dashboard/tickets') {
+          return { ...item, label: 'Báo cáo sự cố' };
+        }
       }
       return item;
     });
