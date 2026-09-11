@@ -15,6 +15,7 @@ async def seed():
     from app.models.contract import Contract, ContractStatus
     from app.models.invoice import Invoice, InvoiceStatus, MeterReading, MeterType, Payment, PaymentChannel
     from app.models.ticket import Ticket, TicketStatus, TicketPriority, TicketRating
+    from app.models.emergency import EmergencyAlert, EmergencyStatus, EmergencyType
     from app.core.security import hash_password
     from app.services.vietqr_service import generate_vietqr_content
     import uuid
@@ -200,6 +201,26 @@ async def seed():
             if status == TicketStatus.CLOSED:
                 rating = TicketRating(ticket_id=ticket.id, score=4, comment="Tho sua nhanh, lich su")
                 db.add(rating)
+
+        # ── Emergency Alerts ────────────────────────────────────────────────
+        alert_data = [
+            ("101", tenants[0], EmergencyType.FIRE, "Có khói bốc lên gần ban công", EmergencyStatus.ACKNOWLEDGED, owner.full_name),
+            ("101", tenants[0], EmergencyType.GAS_LEAK, "Mùi gas nồng nặc ở khu vực bếp", EmergencyStatus.RESOLVED, owner.full_name),
+            ("201", tenants[1], EmergencyType.ELEVATOR, "Thang máy tầng 2 bị kẹt cửa", EmergencyStatus.RESOLVED, owner.full_name),
+        ]
+        for room_no, sender, em_type, desc, st, ack_by in alert_data:
+            em = EmergencyAlert(
+                room_number=room_no,
+                building_name="Tòa nhà REASY",
+                sender_id=sender.id,
+                sender_name=sender.full_name,
+                sender_phone=sender.phone,
+                emergency_type=em_type,
+                description=desc,
+                status=st,
+                acknowledged_by=ack_by,
+            )
+            db.add(em)
 
         await db.commit()
 

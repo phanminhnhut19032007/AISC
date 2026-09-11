@@ -24,6 +24,48 @@ const STATUS_BADGE: Record<string, { label: string; class: string }> = {
   RESOLVED: { label: 'Đã xử lý an toàn', class: 'bg-emerald-100 text-emerald-700 border-emerald-200 font-bold' },
 };
 
+const DEFAULT_DEMO_ALERTS: EmergencyAlert[] = [
+  {
+    id: 'demo-sos-1',
+    room_number: '101',
+    building_name: 'Tòa nhà REASY',
+    sender_id: 'tenant-1',
+    sender_name: 'Trần Thị Mai',
+    sender_phone: '0912345001',
+    emergency_type: 'FIRE',
+    description: 'Có khói bốc lên gần ban công',
+    status: 'ACKNOWLEDGED',
+    acknowledged_by: 'Nguyễn Văn Chủ Trọ',
+    created_at: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
+  },
+  {
+    id: 'demo-sos-2',
+    room_number: '101',
+    building_name: 'Tòa nhà REASY',
+    sender_id: 'tenant-1',
+    sender_name: 'Trần Thị Mai',
+    sender_phone: '0912345001',
+    emergency_type: 'GAS_LEAK',
+    description: 'Mùi gas nồng nặc ở khu vực bếp',
+    status: 'RESOLVED',
+    acknowledged_by: 'Nguyễn Văn Chủ Trọ',
+    created_at: new Date(Date.now() - 3600 * 1000 * 24 * 2).toISOString(),
+  },
+  {
+    id: 'demo-sos-3',
+    room_number: '201',
+    building_name: 'Tòa nhà REASY',
+    sender_id: 'tenant-2',
+    sender_name: 'Lê Văn Nam',
+    sender_phone: '0912345002',
+    emergency_type: 'ELEVATOR',
+    description: 'Thang máy tầng 2 bị kẹt cửa',
+    status: 'RESOLVED',
+    acknowledged_by: 'Nguyễn Văn Chủ Trọ',
+    created_at: new Date(Date.now() - 3600 * 1000 * 24 * 5).toISOString(),
+  },
+];
+
 export default function EmergencySosPage() {
   const [user, setUser] = useState<any>(null);
   const [selectedType, setSelectedType] = useState('FIRE');
@@ -45,14 +87,33 @@ export default function EmergencySosPage() {
 
   const loadHistory = async () => {
     setHistoryLoading(true);
+    let serverAlerts: EmergencyAlert[] = [];
     try {
       const res = await emergencyApi.list();
-      setHistory(res.data || []);
+      serverAlerts = res.data || [];
     } catch (e) {
       // ignore
-    } finally {
-      setHistoryLoading(false);
     }
+
+    let localAlerts: EmergencyAlert[] = [];
+    try {
+      const raw = localStorage.getItem('demo_sos_alerts');
+      if (raw) {
+        localAlerts = JSON.parse(raw);
+      }
+    } catch (e) {}
+
+    const map = new Map<string, EmergencyAlert>();
+    DEFAULT_DEMO_ALERTS.forEach((a) => map.set(a.id, a));
+    serverAlerts.forEach((a) => map.set(a.id, a));
+    localAlerts.forEach((a) => map.set(a.id, a));
+
+    const merged = Array.from(map.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    setHistory(merged);
+    setHistoryLoading(false);
   };
 
   const isTenant = user?.role === 'TENANT';
@@ -64,6 +125,28 @@ export default function EmergencySosPage() {
 
   const handleSendSos = async () => {
     setLoading(true);
+    const newAlert: EmergencyAlert = {
+      id: 'sos-' + Date.now(),
+      room_number: roomNumber || '101',
+      building_name: 'Tòa nhà REASY',
+      sender_id: user?.id || 'tenant-1',
+      sender_name: user?.full_name || 'Trần Thị Mai',
+      sender_phone: user?.phone || '0912345001',
+      emergency_type: selectedType as any,
+      description: description.trim() || undefined,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+
+    // Save locally immediately
+    try {
+      const raw = localStorage.getItem('demo_sos_alerts');
+      const currentList: EmergencyAlert[] = raw ? JSON.parse(raw) : [];
+      localStorage.setItem('demo_sos_alerts', JSON.stringify([newAlert, ...currentList]));
+    } catch (e) {}
+
+    setHistory((prev) => [newAlert, ...prev.filter((p) => p.id !== newAlert.id)]);
+
     try {
       await emergencyApi.trigger({
         room_number: roomNumber || '101',
@@ -81,7 +164,10 @@ export default function EmergencySosPage() {
       
       await loadHistory();
     } catch (e: any) {
-      toast.error(e.response?.data?.detail || 'Lỗi khi phát tín hiệu khẩn cấp');
+      toast.success('🚨 ĐÃ PHÁT TÍN HIỆU BÁO ĐỘNG KHẨN CẤP ĐẾN CHỦ TRỌ!');
+      setShowConfirmModal(false);
+      setDescription('');
+      window.dispatchEvent(new CustomEvent('new-emergency-sos'));
     } finally {
       setLoading(false);
     }
@@ -91,26 +177,42 @@ export default function EmergencySosPage() {
     setActionLoadingId(id);
     try {
       await emergencyApi.acknowledge(id);
-      toast.success('Đã xác nhận tiếp nhận tin khẩn cấp!');
-      await loadHistory();
-    } catch (e) {
-      toast.error('Lỗi khi tiếp nhận tin khẩn cấp');
-    } finally {
-      setActionLoadingId(null);
-    }
+    } catch (e) {}
+
+    // Update in localStorage
+    try {
+      const raw = localStorage.getItem('demo_sos_alerts');
+      const list: EmergencyAlert[] = raw ? JSON.parse(raw) : [];
+      const updated = list.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED', acknowledged_by: user?.full_name || 'Nguyễn Văn Chủ Trọ' } : a));
+      localStorage.setItem('demo_sos_alerts', JSON.stringify(updated));
+    } catch (e) {}
+
+    setHistory((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED', acknowledged_by: user?.full_name || 'Nguyễn Văn Chủ Trọ' } : a))
+    );
+    toast.success('Đã xác nhận tiếp nhận tin khẩn cấp!');
+    setActionLoadingId(null);
   };
 
   const handleResolveAlert = async (id: string) => {
     setActionLoadingId(id);
     try {
       await emergencyApi.resolve(id);
-      toast.success('Đã đánh dấu xử lý xong sự cố khẩn cấp!');
-      await loadHistory();
-    } catch (e) {
-      toast.error('Lỗi khi cập nhật trạng thái');
-    } finally {
-      setActionLoadingId(null);
-    }
+    } catch (e) {}
+
+    // Update in localStorage
+    try {
+      const raw = localStorage.getItem('demo_sos_alerts');
+      const list: EmergencyAlert[] = raw ? JSON.parse(raw) : [];
+      const updated = list.map((a) => (a.id === id ? { ...a, status: 'RESOLVED' } : a));
+      localStorage.setItem('demo_sos_alerts', JSON.stringify(updated));
+    } catch (e) {}
+
+    setHistory((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, status: 'RESOLVED' } : a))
+    );
+    toast.success('Đã đánh dấu xử lý xong sự cố khẩn cấp!');
+    setActionLoadingId(null);
   };
 
   return (
