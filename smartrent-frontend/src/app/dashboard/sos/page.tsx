@@ -14,6 +14,7 @@ const EMERGENCY_TYPES = [
   { id: 'THEFT', label: 'Đột nhập / Trộm cắp', icon: ShieldAlert, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
   { id: 'MEDICAL', label: 'Cấp cứu y tế', icon: HeartPulse, color: 'text-rose-500', bg: 'bg-rose-50 border-rose-200' },
   { id: 'GAS_LEAK', label: 'Rò rỉ Gas / Chập điện', icon: Zap, color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200' },
+  { id: 'ELEVATOR', label: 'Kẹt thang máy / Khóa kẹt', icon: AlertOctagon, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200' },
   { id: 'OTHER', label: 'Sự cố nguy cấp khác', icon: AlertTriangle, color: 'text-slate-600', bg: 'bg-slate-50 border-slate-200' },
 ];
 
@@ -122,30 +123,15 @@ export default function EmergencySosPage() {
         {isTenant ? (
           <>
             {/* Banner hướng dẫn khẩn cấp */}
-            <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 rounded-3xl p-6 text-white shadow-xl shadow-red-600/20 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur text-white flex-shrink-0">
-                  <Siren className="w-8 h-8 animate-pulse" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black uppercase tracking-wide">Trung tâm Báo Động Khẩn Cấp (SOS)</h2>
-                  <p className="text-xs text-red-100 mt-1 max-w-lg leading-relaxed">
-                    Sử dụng tính năng này khi gặp sự cố nguy cấp đe dọa an toàn tính mạng hoặc tài sản tại phòng #{roomNumber}. Tín hiệu sẽ kích hoạt chuông cảnh báo toàn màn hình của Chủ trọ ngay tức thì.
-                  </p>
-                </div>
+            <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 rounded-3xl p-6 text-white shadow-xl shadow-red-600/20 flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur text-white flex-shrink-0">
+                <Siren className="w-8 h-8 animate-pulse" />
               </div>
-
-              {/* Hotlines Cứu Hộ */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <a href="tel:114" className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all">
-                  🚒 114 (Cháy)
-                </a>
-                <a href="tel:115" className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all">
-                  🚑 115 (Cấp cứu)
-                </a>
-                <a href="tel:113" className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all">
-                  👮 113 (Công an)
-                </a>
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-wide">Trung tâm Báo Động Khẩn Cấp (SOS)</h2>
+                <p className="text-xs text-red-100 mt-1 max-w-2xl leading-relaxed">
+                  Sử dụng tính năng này khi gặp sự cố nguy cấp đe dọa an toàn tính mạng hoặc tài sản tại phòng #{roomNumber}. Tín hiệu sẽ kích hoạt chuông cảnh báo toàn màn hình của Chủ trọ ngay tức thì.
+                </p>
               </div>
             </div>
 

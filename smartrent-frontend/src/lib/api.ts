@@ -222,7 +222,7 @@ export interface EmergencyAlert {
   sender_id: string;
   sender_name: string;
   sender_phone: string;
-  emergency_type: 'FIRE' | 'THEFT' | 'MEDICAL' | 'GAS_LEAK' | 'OTHER';
+  emergency_type: 'FIRE' | 'THEFT' | 'MEDICAL' | 'GAS_LEAK' | 'ELEVATOR' | 'OTHER';
   description?: string;
   status: 'ACTIVE' | 'ACKNOWLEDGED' | 'RESOLVED';
   acknowledged_by?: string;

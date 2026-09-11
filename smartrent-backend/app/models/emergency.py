@@ -12,6 +12,7 @@ class EmergencyType(str, enum.Enum):
     THEFT = "THEFT"            # Đột nhập / Trộm cắp
     MEDICAL = "MEDICAL"        # Cấp cứu y tế
     GAS_LEAK = "GAS_LEAK"      # Rò rỉ khí gas / Chập điện
+    ELEVATOR = "ELEVATOR"      # Kẹt thang máy / Cửa khóa
     OTHER = "OTHER"            # Sự cố khẩn cấp khác
 
 

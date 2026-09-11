@@ -10,6 +10,7 @@ const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bg:
   THEFT: { label: 'ĐỘT NHẬP / TRỘM CẮP', icon: ShieldAlert, color: 'text-amber-500', bg: 'bg-amber-500/10' },
   MEDICAL: { label: 'CẤP CỨU Y TẾ', icon: HeartPulse, color: 'text-rose-500', bg: 'bg-rose-500/10' },
   GAS_LEAK: { label: 'RÒ RỈ GAS / CHẬP ĐIỆN', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+  ELEVATOR: { label: 'KẸT THANG MÁY / CỬA KHÓA', icon: AlertTriangle, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
   OTHER: { label: 'SỰ CỐ KHẨN CẤP', icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-500/10' },
 };
 
