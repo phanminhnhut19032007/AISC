@@ -5,22 +5,24 @@ import toast from 'react-hot-toast';
 import { authApi } from '@/lib/api';
 import { saveAuth } from '@/lib/auth';
 import { 
-  Phone, Lock, ArrowRight, UserCheck, Users, 
-  ArrowLeft, Home as HomeIcon, Sparkles
+  Phone, Lock, ArrowRight, ShieldCheck, Users, 
+  ArrowLeft, Home as HomeIcon, Eye, EyeOff, Check, 
+  Lightbulb, ChevronRight
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [roleSelection, setRoleSelection] = useState<'OWNER' | 'TENANT' | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'' | 'OWNER' | 'TENANT'>('');
   const [form, setForm] = useState({ phone: '', password: '' });
   const [roomCode, setRoomCode] = useState('101');
+  const [obscurePassword, setObscurePassword] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Mouse coordinate state for dynamic zero-G parallax on the card and background
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Anti-gravity interactive particles canvas
+  // 1. Dynamic Animated Aurora Mesh & Floating Waves Canvas (Recreation of Flutter's _AuroraWavesPainter)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -38,72 +40,153 @@ export default function LoginPage() {
     };
     window.addEventListener('resize', handleResize);
 
-    // Particle definition: anti-gravity motes drifting upwards
-    interface Particle {
-      x: number;
-      y: number;
-      size: number;
-      speedY: number;
-      speedX: number;
-      opacity: number;
-      color: string;
-      pulseSpeed: number;
-    }
+    const startTime = performance.now();
+    const durationMs = 12000; // 12 seconds loop, matching Flutter
 
-    const colors = [
-      'rgba(248, 215, 100, ', // Gold from logo
-      'rgba(96, 181, 230, ',  // Cyan from logo
-      'rgba(59, 130, 246, ',  // Royal Blue
-      'rgba(168, 85, 247, ',  // Purple
-      'rgba(255, 255, 255, ', // Starlight White
-    ];
+    const drawOrb = (
+      centerX: number,
+      centerY: number,
+      radius: number,
+      rgb: string,
+      opacity: number
+    ) => {
+      if (radius <= 0) return;
+      const gradient = ctx.createRadialGradient(
+        centerX,
+        centerY,
+        0,
+        centerX,
+        centerY,
+        radius
+      );
+      gradient.addColorStop(0, `rgba(${rgb}, ${Math.max(0, Math.min(1, opacity))})`);
+      gradient.addColorStop(0.45, `rgba(${rgb}, ${Math.max(0, Math.min(1, opacity * 0.5))})`);
+      gradient.addColorStop(1, `rgba(${rgb}, 0)`);
 
-    const particles: Particle[] = Array.from({ length: 65 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      size: Math.random() * 3 + 1,
-      speedY: -(Math.random() * 0.75 + 0.25), // Rising upwards against gravity
-      speedX: (Math.random() - 0.5) * 0.4,
-      opacity: Math.random() * 0.7 + 0.2,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      pulseSpeed: Math.random() * 0.02 + 0.01,
-    }));
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    };
 
-    const render = () => {
+    const drawFlowingWave = (
+      waveHeight: number,
+      amplitude: number,
+      frequency: number,
+      phase: number,
+      strokeWidth: number,
+      colorStops: { stop: number; color: string }[]
+    ) => {
+      if (width <= 0 || height <= 0) return;
+
+      const path = new Path2D();
+      const step = Math.max(width / 50, 2);
+
+      const startY = waveHeight + Math.sin(phase) * amplitude;
+      path.moveTo(0, startY);
+
+      for (let x = 0; x <= width + step; x += step) {
+        const normX = Math.min(1, Math.max(0, x / width));
+        const y = waveHeight + Math.sin(normX * frequency * 2 * Math.PI + phase) * amplitude;
+        path.lineTo(x, y);
+      }
+
+      const grad = ctx.createLinearGradient(0, 0, width, 0);
+      colorStops.forEach((cs) => grad.addColorStop(cs.stop, cs.color));
+
+      ctx.save();
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = 'round';
+      ctx.stroke(path);
+      ctx.restore();
+    };
+
+    const render = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const animationValue = (elapsed % durationMs) / durationMs;
+      const t = animationValue * 2 * Math.PI;
+
       ctx.clearRect(0, 0, width, height);
 
-      // Draw and update rising zero-gravity particles
-      particles.forEach((p) => {
-        p.y += p.speedY;
-        p.x += p.speedX;
+      // 1. Base gradient wash (#FFFFFF -> #F8FAFC -> #F1F5F9)
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+      bgGrad.addColorStop(0, '#FFFFFF');
+      bgGrad.addColorStop(0.5, '#F8FAFC');
+      bgGrad.addColorStop(1, '#F1F5F9');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
 
-        // Wave oscillation (subtle zero-g float)
-        p.x += Math.sin(p.y * 0.015) * 0.3;
+      // 2. Animated Floating Radiant Pastel Orbs
+      // Orb 1: Sky Cyan (#38BDF8 -> 56, 189, 248)
+      drawOrb(
+        width * 0.15 + Math.sin(t) * 45,
+        height * 0.18 + Math.cos(t * 0.8) * 35,
+        width * 0.45,
+        '56, 189, 248',
+        0.16 + Math.sin(t) * 0.03
+      );
 
-        // Wrap around when particle floats off the top
-        if (p.y < -10) {
-          p.y = height + 10;
-          p.x = Math.random() * width;
-        }
-        if (p.x < -10) p.x = width + 10;
-        if (p.x > width + 10) p.x = -10;
+      // Orb 2: Soft Royal Indigo (#818CF8 -> 129, 140, 248)
+      drawOrb(
+        width * 0.88 + Math.cos(t * 0.9) * 40,
+        height * 0.28 + Math.sin(t * 1.1) * 30,
+        width * 0.4,
+        '129, 140, 248',
+        0.14 + Math.cos(t * 0.03)
+      );
 
-        // Glow pulse
-        p.opacity += Math.sin(Date.now() * 0.003 * p.pulseSpeed) * 0.01;
-        const currentOpacity = Math.max(0.15, Math.min(0.85, p.opacity));
+      // Orb 3: Sunshine Amber (#FBBF24 -> 251, 191, 36)
+      drawOrb(
+        width * 0.82 + Math.sin(t * 1.2) * 50,
+        height * 0.8 + Math.cos(t * 0.7) * 40,
+        width * 0.5,
+        '251, 191, 36',
+        0.15 + Math.sin(t * 0.8) * 0.03
+      );
 
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `${p.color}${currentOpacity})`;
-        ctx.shadowBlur = p.size * 3.5;
-        ctx.shadowColor = `${p.color}0.8)`;
-        ctx.fill();
-      });
+      // Orb 4: Mint Green (#34D399 -> 52, 211, 153)
+      drawOrb(
+        width * 0.1 + Math.cos(t * 0.7) * 35,
+        height * 0.82 + Math.sin(t * 0.9) * 35,
+        width * 0.42,
+        '52, 211, 153',
+        0.12 + Math.cos(t * 1.1) * 0.03
+      );
+
+      // 3. Flowing Sinusoidal Silk Waves
+      // Wave 1
+      drawFlowingWave(
+        height * 0.38,
+        28,
+        1.2,
+        t,
+        2.0,
+        [
+          { stop: 0, color: 'rgba(56, 189, 248, 0.22)' },
+          { stop: 0.5, color: 'rgba(129, 140, 248, 0.18)' },
+          { stop: 1, color: 'rgba(251, 191, 36, 0.15)' },
+        ]
+      );
+
+      // Wave 2
+      drawFlowingWave(
+        height * 0.65,
+        34,
+        0.9,
+        -t * 0.85 + 1.0,
+        2.2,
+        [
+          { stop: 0, color: 'rgba(251, 191, 36, 0.18)' },
+          { stop: 0.5, color: 'rgba(244, 114, 182, 0.16)' },
+          { stop: 1, color: 'rgba(56, 189, 248, 0.15)' },
+        ]
+      );
 
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrameId = requestAnimationFrame(render);
 
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -111,32 +194,45 @@ export default function LoginPage() {
     };
   }, []);
 
-  // Track mouse position for soft 3D zero-G parallax
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const { clientX, clientY } = e;
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    setMousePos({
-      x: (clientX - centerX) / 45,
-      y: (clientY - centerY) / 45,
-    });
+  const selectRole = (role: 'OWNER' | 'TENANT') => {
+    setSelectedRole(role);
+    setErrorMessage(null);
+    if (role === 'OWNER') {
+      setForm({ phone: '0901234567', password: 'smartrent123' });
+    } else {
+      setForm({ phone: '0912345001', password: 'tenant123' });
+      setRoomCode('101');
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roleSelection) return;
-    
-    if (roleSelection === 'TENANT' && !roomCode.trim()) {
-      toast.error('Vui lòng nhập Mã trọ / Mã phòng trọ của bạn');
+    const phone = form.phone.trim();
+    const password = form.password.trim();
+    const room = roomCode.trim();
+
+    if (!phone || !password) {
+      setErrorMessage('Vui lòng nhập đầy đủ số điện thoại và mật khẩu.');
       return;
     }
-    
+
+    if (selectedRole === 'TENANT' && !room) {
+      setErrorMessage('Vui lòng nhập Mã trọ / Mã phòng trọ của bạn.');
+      return;
+    }
+
     setLoading(true);
+    setErrorMessage(null);
+
     try {
-      const res = await authApi.login(form.phone, form.password);
-      
-      if (res.data.role !== roleSelection) {
-        toast.error(`Tài khoản này không có quyền đăng nhập với vai trò ${roleSelection === 'OWNER' ? 'Chủ trọ' : 'Người thuê'}`);
+      const res = await authApi.login(phone, password);
+
+      if (res.data.role !== selectedRole) {
+        setErrorMessage(
+          `Tài khoản này không có quyền đăng nhập với vai trò ${
+            selectedRole === 'OWNER' ? 'Chủ trọ' : 'Người thuê'
+          }.`
+        );
         setLoading(false);
         return;
       }
@@ -146,220 +242,286 @@ export default function LoginPage() {
         full_name: res.data.full_name,
         role: res.data.role,
       });
-      
-      if (roleSelection === 'TENANT') {
-        localStorage.setItem('demo_tenant_room_code', roomCode.trim());
+
+      if (selectedRole === 'TENANT') {
+        localStorage.setItem('demo_tenant_room_code', room);
       }
-      
+
+      // Success animation trigger
+      setIsSuccess(true);
       toast.success(`Chào mừng, ${res.data.full_name}!`);
-      toast.success('Đăng nhập thành công! Đang chuyển hướng...');
-      router.push('/dashboard');
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 700);
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
-    } finally {
-      setForm({ ...form, password: '' });
+      setErrorMessage(
+        err.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
+      );
       setLoading(false);
     }
   };
 
+  const isOwner = selectedRole === 'OWNER';
+
   return (
-    <div 
-      onMouseMove={handleMouseMove}
-      className="min-h-screen relative overflow-hidden bg-slate-950 flex items-center justify-center p-4 selection:bg-amber-400/30 selection:text-white"
-    >
-      {/* 1. Interactive Anti-Gravity Canvas Particles (Bụi sao & hạt ánh sáng trôi ngược trọng lực) */}
-      <canvas 
-        ref={canvasRef} 
+    <div className="min-h-screen relative overflow-hidden bg-[#F8FAFC] flex items-center justify-center p-4 selection:bg-amber-100 selection:text-amber-900">
+      {/* 1. Dynamic Canvas Background */}
+      <canvas
+        ref={canvasRef}
         className="absolute inset-0 pointer-events-none z-0"
       />
 
-      {/* 2. Zero-G Nebula Cosmic Glow Orbs (Ánh sáng vũ trụ nền lơ lửng) */}
-      <div 
-        style={{ transform: `translate3d(${-mousePos.x * 0.8}px, ${-mousePos.y * 0.8}px, 0)` }}
-        className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl animate-pulse-glow pointer-events-none transition-transform duration-300 ease-out" 
-      />
-      <div 
-        style={{ transform: `translate3d(${mousePos.x * 0.9}px, ${mousePos.y * 0.9}px, 0)` }}
-        className="absolute bottom-1/4 right-1/4 w-[28rem] h-[28rem] bg-amber-500/10 rounded-full blur-3xl animate-pulse-glow delay-1000 pointer-events-none transition-transform duration-300 ease-out" 
-      />
-      <div 
-        style={{ transform: `translate3d(${-mousePos.x * 0.5}px, ${mousePos.y * 0.5}px, 0)` }}
-        className="absolute top-1/2 right-1/3 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl animate-pulse-glow delay-2000 pointer-events-none transition-transform duration-300 ease-out" 
-      />
+      {/* 2. Main Foreground Content */}
+      <div className="w-full max-w-[440px] relative z-10 flex flex-col items-center">
+        {/* Floating Elegant Logo Card with Soft Glow Halo */}
+        <div className="relative mb-4 group">
+          {/* Soft pastel ambient halo */}
+          <div className="absolute -inset-2 bg-gradient-to-r from-[#FDE68A] via-[#BAE6FD] to-[#93C5FD] rounded-[26px] blur-xl opacity-75 animate-pulse" />
 
-      {/* 3. Main Login Container */}
-      <div 
-        style={{ transform: `translate3d(${mousePos.x * 0.3}px, ${mousePos.y * 0.3}px, 0)` }}
-        className="w-full max-w-md relative z-20 transition-transform duration-300 ease-out"
-      >
-        
-        {/* Brand Logo Header with Anti-gravity Glow */}
-        <div className="text-center mb-6 flex flex-col items-center">
-          {/* Logo Badge with floating 3D effect */}
-          <div className="relative group mb-3">
-            <div className="absolute -inset-1.5 bg-gradient-to-r from-amber-400 via-sky-400 to-blue-600 rounded-3xl blur-md opacity-70 group-hover:opacity-100 transition duration-500 animate-pulse-glow" />
-            <div className="relative w-28 h-20 bg-white/95 rounded-2xl p-2 flex items-center justify-center shadow-2xl backdrop-blur-xl border border-white/30 transform group-hover:scale-105 transition-transform duration-300">
-              <img 
-                src="/logo.jpg" 
-                alt="REASY Logo" 
-                className="w-full h-full object-contain"
-              />
-            </div>
+          {/* White Card with crisp REASY Logo */}
+          <div className="relative w-[116px] h-[80px] p-2 bg-white rounded-[22px] border border-[#E2E8F0] shadow-[0_10px_25px_-5px_rgba(15,23,42,0.08),0_4px_12px_rgba(56,189,248,0.2)] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+            <img
+              src="/logo.jpg"
+              alt="REASY Logo"
+              className="w-full h-full object-contain rounded-xl"
+            />
           </div>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Chào mừng đến <span className="bg-gradient-to-r from-amber-300 via-sky-300 to-blue-400 bg-clip-text text-transparent">REASY</span>
-          </h1>
         </div>
 
-        {/* Floating Glass Card */}
-        <div className="bg-slate-900/65 backdrop-blur-2xl border border-white/15 rounded-3xl p-7 sm:p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),0_0_40px_rgba(59,130,246,0.12)]">
-          {roleSelection === null ? (
-            /* BƯỚC 1: XÁC NHẬN VAI TRÒ */
-            <div className="space-y-5">
-              <div className="text-center space-y-1">
-                <h2 className="text-lg font-bold text-white">Xác nhận vai trò truy cập</h2>
-                <p className="text-xs text-slate-400">Vui lòng chọn cổng đăng nhập của bạn để tiếp tục</p>
+        {/* Title: Chào mừng đến REASY */}
+        <div className="text-center mb-6">
+          <h1 className="text-[23px] font-extrabold text-[#0F172A] tracking-tight flex items-center justify-center gap-1.5">
+            <span>Chào mừng đến</span>
+            <span className="bg-gradient-to-r from-[#D97706] via-[#0284C7] to-[#2563EB] bg-clip-text text-transparent text-[25px] font-black tracking-wide">
+              REASY
+            </span>
+          </h1>
+          <p className="text-[12.5px] text-[#64748B] font-medium mt-1">
+            Hệ thống quản lý phòng trọ & cư dân thông minh
+          </p>
+        </div>
+
+        {/* Pure White Modern Card */}
+        <div className="w-full bg-white rounded-[28px] p-6 sm:p-7 border border-[#E2E8F0] shadow-[0_20px_40px_-15px_rgba(15,23,42,0.07),0_0_20px_rgba(56,189,248,0.05)] transition-all">
+          {selectedRole === '' ? (
+            /* ─── BƯỚC 1: XÁC NHẬN VAI TRÒ ─── */
+            <div className="space-y-4">
+              <div className="text-center">
+                <h2 className="text-[17px] font-extrabold text-[#0F172A]">
+                  Xác nhận vai trò truy cập
+                </h2>
+                <p className="text-[12px] text-[#64748B] mt-1">
+                  Vui lòng chọn cổng đăng nhập của bạn để tiếp tục
+                </p>
               </div>
 
-              <div className="grid gap-3.5 pt-1">
-                {/* Lựa chọn CHỦ TRỌ */}
+              <div className="space-y-3 pt-2">
+                {/* Option 1: Chủ trọ / Quản trị */}
                 <button
-                  onClick={() => {
-                    setRoleSelection('OWNER');
-                    setForm({ phone: '0901234567', password: 'smartrent123' });
-                  }}
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-blue-600/15 hover:border-sky-400/50 hover:shadow-[0_0_20px_rgba(56,189,248,0.25)] transition-all text-left group cursor-pointer"
+                  type="button"
+                  onClick={() => selectRole('OWNER')}
+                  className="w-full p-3.5 bg-white hover:bg-slate-50 border border-[#E2E8F0] hover:border-blue-300 rounded-[18px] shadow-[0_4px_10px_rgba(15,23,42,0.03)] hover:shadow-md transition-all duration-200 flex items-center gap-3.5 text-left group cursor-pointer active:scale-[0.98]"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-sky-500/20 flex items-center justify-center text-sky-400 group-hover:bg-sky-500 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                    <UserCheck className="w-6 h-6" />
+                  <div className="w-11 h-11 rounded-[14px] bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#2563EB] flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-white text-base group-hover:text-sky-300 transition-colors">Chủ trọ / Quản trị</h3>
+                    <h3 className="text-[14.5px] font-bold text-[#0F172A] group-hover:text-blue-600 transition-colors">
+                      Chủ trọ / Quản trị
+                    </h3>
+                    <p className="text-[11px] text-[#64748B] truncate mt-0.5">
+                      Quản lý tòa nhà, hóa đơn, sự cố & cư dân
+                    </p>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-sky-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[#94A3B8] group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </button>
 
-                {/* Lựa chọn NGƯỜI THUÊ */}
+                {/* Option 2: Cư dân / Người thuê */}
                 <button
-                  onClick={() => {
-                    setRoleSelection('TENANT');
-                    setForm({ phone: '0912345001', password: 'tenant123' });
-                    setRoomCode('101');
-                  }}
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-amber-500/15 hover:border-amber-400/50 hover:shadow-[0_0_20px_rgba(251,191,36,0.25)] transition-all text-left group cursor-pointer"
+                  type="button"
+                  onClick={() => selectRole('TENANT')}
+                  className="w-full p-3.5 bg-white hover:bg-slate-50 border border-[#E2E8F0] hover:border-amber-300 rounded-[18px] shadow-[0_4px_10px_rgba(15,23,42,0.03)] hover:shadow-md transition-all duration-200 flex items-center gap-3.5 text-left group cursor-pointer active:scale-[0.98]"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all duration-300 flex-shrink-0">
+                  <div className="w-11 h-11 rounded-[14px] bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center text-[#D97706] flex-shrink-0 group-hover:scale-105 transition-transform">
                     <Users className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-white text-base group-hover:text-amber-300 transition-colors">Cư dân / Người thuê</h3>
+                    <h3 className="text-[14.5px] font-bold text-[#0F172A] group-hover:text-amber-600 transition-colors">
+                      Cư dân / Người thuê
+                    </h3>
+                    <p className="text-[11px] text-[#64748B] truncate mt-0.5">
+                      Xem hóa đơn, báo sự cố & tiện ích phòng
+                    </p>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[#94A3B8] group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </button>
               </div>
             </div>
           ) : (
-            /* BƯỚC 2: FORM ĐĂNG NHẬP */
-            <div className="space-y-5">
-              <div className="flex items-center gap-3">
+            /* ─── BƯỚC 2: FORM ĐĂNG NHẬP ─── */
+            <div className="space-y-4">
+              {/* Header with Back button & Role badge */}
+              <div className="flex items-center justify-between">
                 <button
-                  onClick={() => setRoleSelection(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Quay lại chọn vai trò"
+                  type="button"
+                  onClick={() => {
+                    setSelectedRole('');
+                    setErrorMessage(null);
+                  }}
+                  className="p-1.5 rounded-xl bg-[#F1F5F9] hover:bg-slate-200 text-[#475569] transition-colors cursor-pointer"
+                  title="Quay lại"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <h2 className="text-base font-bold text-white">
-                  Đăng nhập: <span className={roleSelection === 'OWNER' ? 'text-sky-400' : 'text-amber-400'}>
-                    {roleSelection === 'OWNER' ? 'Chủ trọ / Quản trị' : 'Cư dân người thuê'}
-                  </span>
-                </h2>
+
+                <div
+                  className={`px-2.5 py-1 rounded-lg border text-[12px] font-extrabold ${
+                    isOwner
+                      ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]'
+                      : 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]'
+                  }`}
+                >
+                  {isOwner ? 'Chủ trọ / Quản trị' : 'Cư dân người thuê'}
+                </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* 1. Trường Số điện thoại */}
+              <form onSubmit={handleLogin} className="space-y-3.5 pt-1">
+                {/* 1. Phone Input */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Số điện thoại đăng nhập</label>
+                  <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
+                    Số điện thoại đăng nhập
+                  </label>
                   <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                     <input
                       type="tel"
                       placeholder="0901234567"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full bg-white/10 border border-white/15 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400 text-sm transition-all"
+                      className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                        isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                      } transition-all`}
                       required
                     />
                   </div>
                 </div>
 
-                {/* 2. Trường Mã trọ / Mã phòng (Chỉ hiển thị nếu chọn NGƯỜI THUÊ) */}
-                {roleSelection === 'TENANT' && (
+                {/* 2. Room Code Input (Tenant only) */}
+                {!isOwner && (
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">Mã phòng trọ của bạn</label>
+                    <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
+                      Mã phòng trọ của bạn
+                    </label>
                     <div className="relative">
-                      <HomeIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <HomeIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                       <input
                         type="text"
                         placeholder="Ví dụ: 101, 202, 301..."
                         value={roomCode}
                         onChange={(e) => setRoomCode(e.target.value)}
-                        className="w-full bg-white/10 border border-white/15 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm transition-all"
+                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all"
                         required
                       />
                     </div>
                   </div>
                 )}
 
-                {/* 3. Trường Mật khẩu */}
+                {/* 3. Password Input */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Mật khẩu</label>
+                  <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
+                    Mật khẩu
+                  </label>
                   <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                     <input
-                      type="password"
+                      type={obscurePassword ? 'password' : 'text'}
                       placeholder="••••••••"
                       value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      className="w-full bg-white/10 border border-white/15 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400 text-sm transition-all"
+                      className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-10 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                        isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                      } transition-all`}
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setObscurePassword(!obscurePassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
+                    >
+                      {obscurePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
+                {/* Error Banner */}
+                {errorMessage && (
+                  <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-[12px] font-medium flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
+                {/* Submit Button with Morphing Animation & Success State */}
                 <button
                   type="submit"
-                  disabled={loading}
-                  className={`w-full disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all mt-3 shadow-xl cursor-pointer ${
-                    roleSelection === 'OWNER' 
-                      ? 'bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 shadow-sky-500/25' 
-                      : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-amber-500/25'
+                  disabled={loading || isSuccess}
+                  className={`w-full h-12 rounded-[14px] text-white font-extrabold text-[14.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-lg active:scale-[0.97] mt-2 ${
+                    isSuccess
+                      ? 'bg-gradient-to-r from-[#10B981] to-[#059669] shadow-emerald-500/30'
+                      : isOwner
+                      ? 'bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-blue-500/25'
+                      : 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] shadow-amber-500/25'
                   }`}
                 >
-                  {loading ? 'Đang xác thực...' : 'Đăng nhập vào hệ thống'}
-                  {!loading && <ArrowRight className="w-4 h-4" />}
+                  {isSuccess ? (
+                    <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                      <div className="w-5 h-5 rounded-full bg-white text-[#059669] flex items-center justify-center">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </div>
+                      <span>Đăng nhập thành công!</span>
+                    </div>
+                  ) : loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang xác thực...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>Đăng nhập vào hệ thống</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  )}
                 </button>
               </form>
 
-              {/* Thông tin đăng nhập thử nghiệm */}
-              <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-xl">
-                <p className="text-[11px] text-sky-300 font-bold mb-1">Tài khoản demo sẵn:</p>
-                {roleSelection === 'OWNER' ? (
-                  <p className="text-xs text-slate-300">SĐT: <span className="font-bold text-amber-300">0901234567</span> | Mật khẩu: <span className="font-bold text-amber-300">smartrent123</span></p>
-                ) : (
-                  <p className="text-xs text-slate-300">
-                    SĐT: <span className="font-bold text-amber-300">0912345001</span> | Pass: <span className="font-bold text-amber-300">tenant123</span> | Phòng: <span className="font-bold text-amber-300">101</span>
-                  </p>
-                )}
+              {/* Demo Account Box (Clean Light Theme) */}
+              <div
+                className={`p-3 rounded-xl border text-[11px] ${
+                  isOwner
+                    ? 'bg-[#EFF6FF] border-[#BFDBFE] text-[#1E40AF]'
+                    : 'bg-[#FFFBEB] border-[#FDE68A] text-[#92400E]'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-bold mb-1">
+                  <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Tài khoản demo sẵn:</span>
+                </div>
+                <p className="font-medium">
+                  {isOwner ? (
+                    <>SĐT: <strong className="text-[#1D4ED8]">0901234567</strong> | Mật khẩu: <strong className="text-[#1D4ED8]">smartrent123</strong></>
+                  ) : (
+                    <>SĐT: <strong className="text-[#B45309]">0912345001</strong> | Pass: <strong className="text-[#B45309]">tenant123</strong> | Phòng: <strong className="text-[#B45309]">101</strong></>
+                  )}
+                </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer brand credit */}
-        <p className="text-center text-[11px] text-slate-500 mt-5">
-          © 2026 <span className="text-slate-400 font-semibold">REASY</span> • Nền tảng quản lý phòng trọ thế hệ mới
+        {/* Footer */}
+        <p className="text-center text-[11.5px] text-[#94A3B8] font-medium mt-5">
+          © 2026 REASY • Nền tảng quản lý phòng trọ thế hệ mới
         </p>
       </div>
     </div>
