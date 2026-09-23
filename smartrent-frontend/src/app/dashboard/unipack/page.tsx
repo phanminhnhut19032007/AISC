@@ -2,7 +2,10 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { getUser } from '@/lib/auth';
-import { ShoppingBag, Clock, Calendar, QrCode, Plus, Minus, Tag, AlertCircle, ShoppingCart, X, Info, Trash2 } from 'lucide-react';
+import { 
+  ShoppingBag, Clock, Calendar, QrCode, Plus, Minus, 
+  Tag, AlertCircle, ShoppingCart, X, Info, Trash2, Check, AlertTriangle 
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -27,6 +30,8 @@ interface Order {
   roomNumber: string;
   paymentMethod: 'COD' | 'VIETQR';
   orderDate: string;
+  createdAt: number;
+  cancelDeadline: number;
   status: 'PENDING_SUNDAY_DELIVERY' | 'DELIVERED' | 'CANCELLED';
   isPaid: boolean;
 }
@@ -100,6 +105,9 @@ export default function UniPackPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   
+  // Real-time second ticker for countdown
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+  
   // Modals visibility
   const [showCartModal, setShowCartModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -117,6 +125,14 @@ export default function UniPackPage() {
   // Mock progress orders
   const [progressOrders, setProgressOrders] = useState(8);
 
+  // Live timer ticker every 1 second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     const user = getUser();
     setCurrentUser(user);
@@ -127,10 +143,25 @@ export default function UniPackPage() {
       setRoomNumber(savedRoom || '101');
     }
 
-    // Load orders
+    // Load orders with normalized timestamps
     const savedOrders = localStorage.getItem('unipack_orders');
     if (savedOrders) {
-      setOrders(JSON.parse(savedOrders));
+      try {
+        const rawList: any[] = JSON.parse(savedOrders);
+        const normalized: Order[] = rawList.map((o) => {
+          const createdAt = o.createdAt || (o.orderDate ? new Date(o.orderDate).getTime() || Date.now() : Date.now());
+          const cancelDeadline = o.cancelDeadline || (createdAt + 60 * 60 * 1000);
+          return {
+            ...o,
+            createdAt,
+            cancelDeadline,
+            isPaid: o.isPaid ?? false,
+          };
+        });
+        setOrders(normalized);
+      } catch (e) {
+        // ignore
+      }
     }
 
     // Load cart
@@ -139,6 +170,27 @@ export default function UniPackPage() {
       setCart(JSON.parse(savedCart));
     }
   }, []);
+
+  // Format exact deadline date & time to seconds (e.g. 15:30:45 23/09/2026)
+  const formatExactDeadline = (deadlineMs: number) => {
+    const d = new Date(deadlineMs);
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const seconds = d.getSeconds().toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+  };
+
+  // Format remaining countdown time (e.g. 59:45)
+  const formatRemainingTime = (diffMs: number) => {
+    if (diffMs <= 0) return '00:00';
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Add product to cart
   const handleAddToCart = (product: Product) => {
@@ -215,7 +267,6 @@ export default function UniPackPage() {
     setShowCheckoutModal(true);
   };
 
-
   // Place orders and clear checked items in cart
   const handlePlaceOrder = () => {
     if (!receiverName.trim() || !receiverPhone.trim() || !roomNumber.trim()) {
@@ -227,6 +278,7 @@ export default function UniPackPage() {
       return toast.error('Không có sản phẩm nào được chọn thanh toán');
     }
 
+    const now = Date.now();
     const newOrders: Order[] = checkedItems.map(item => ({
       id: 'UP' + Math.floor(100000 + Math.random() * 900000),
       productName: item.product.name,
@@ -236,9 +288,11 @@ export default function UniPackPage() {
       receiverPhone: receiverPhone,
       roomNumber: roomNumber,
       paymentMethod: paymentMethod,
-      orderDate: new Date().toLocaleString('vi-VN'),
+      orderDate: new Date(now).toLocaleString('vi-VN'),
+      createdAt: now,
+      cancelDeadline: now + 60 * 60 * 1000, // 1 hour cancel window (3600 seconds)
       status: 'PENDING_SUNDAY_DELIVERY',
-      isPaid: paymentMethod === 'VIETQR' // VIETQR is pre-paid, COD is pay-later
+      isPaid: false // Always starts as UNPAID until customer pays or confirms!
     }));
 
     const updatedOrders = [...newOrders, ...orders];
@@ -251,7 +305,7 @@ export default function UniPackPage() {
 
     setProgressOrders(prev => prev + newOrders.length);
 
-    toast.success('Đặt hàng UniPack thành công! Đã sinh mã QR nhận hàng.');
+    toast.success('Đặt hàng UniPack thành công! Bạn có 1 giờ để hủy đơn nếu đổi ý.');
     setShowCheckoutModal(false);
     setShowCartModal(false);
   };
@@ -271,14 +325,31 @@ export default function UniPackPage() {
   };
 
   const handleCancelOrder = (orderId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    if (order.status === 'CANCELLED') {
+      toast.error('Đơn hàng này đã được hủy trước đó');
+      return;
+    }
+
+    const remainingMs = (order.cancelDeadline || 0) - Date.now();
+    if (remainingMs <= 0) {
+      toast.error('Đã quá thời hạn 1 giờ, không thể hủy đơn hàng này nữa!');
+      return;
+    }
+
+    if (!window.confirm(`Bạn có chắc chắn muốn hủy đơn hàng #${order.id} (${order.productName}) không?`)) {
+      return;
+    }
+
     const updated = orders.map(o =>
       o.id === orderId ? { ...o, status: 'CANCELLED' as const } : o
     );
     setOrders(updated);
     localStorage.setItem('unipack_orders', JSON.stringify(updated));
     setProgressOrders(prev => Math.max(0, prev - 1));
-    toast.success('Đã hủy đơn hàng thành công.');
+    toast.success(`Đã hủy đơn hàng #${order.id} thành công.`);
   };
 
   const fm = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
@@ -431,118 +502,168 @@ export default function UniPackPage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-bold text-slate-800 text-base">Đơn hàng UniPack của bạn</h3>
-            <span className="text-xs text-slate-400">Tự động đồng bộ QR nhận hàng</span>
+            <span className="text-xs text-slate-400">Tự động đồng bộ QR nhận hàng &amp; hạn hủy 1 giờ</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                  {['Mã đơn', 'Sản phẩm', 'SL', 'Tổng tiền', 'Người nhận / Phòng', 'Trạng thái', 'Thanh toán', 'Phương thức', 'Thao tác'].map((h) => (
-                    <th key={h} className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wide">{h}</th>
+                  {['Mã đơn', 'Sản phẩm', 'SL', 'Tổng tiền', 'Người nhận / Phòng', 'Trạng thái', 'Thanh toán', 'Phương thức', 'Hạn hủy đơn (1 giờ)', 'Thao tác'].map((h) => (
+                    <th key={h} className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-slate-400">Bạn chưa đặt đơn hàng UniPack nào trong tuần này.</td>
+                    <td colSpan={10} className="text-center py-12 text-slate-400">Bạn chưa đặt đơn hàng UniPack nào trong tuần này.</td>
                   </tr>
                 ) : (
-                  orders.map((o) => (
-                    <tr key={o.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-indigo-600">#{o.id}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-800">{o.productName}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-700">{o.quantity}</td>
-                      <td className="px-6 py-4 font-bold text-slate-900">{fm(o.totalPrice)}</td>
-                      <td className="px-6 py-4">
-                        <div className="text-slate-800 font-medium">{o.receiverName}</div>
-                        <div className="text-xs text-slate-400">Phòng {o.roomNumber} - {o.receiverPhone}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {o.status === 'CANCELLED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200">
-                            Đã hủy đơn
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                            <Clock className="w-3 h-3" /> Giao Chủ Nhật
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {o.status === 'CANCELLED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200">
-                            Chưa thanh toán
-                          </span>
-                        ) : currentUser?.role === 'TENANT' ? (
-                          o.isPaid ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
-                              Đã thanh toán
+                  orders.map((o) => {
+                    const remainingMs = (o.cancelDeadline || 0) - currentTime;
+                    const isCanCancel = remainingMs > 0 && o.status !== 'CANCELLED' && o.status !== 'DELIVERED';
+
+                    return (
+                      <tr key={o.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-indigo-600 whitespace-nowrap">#{o.id}</td>
+                        <td className="px-5 py-4 font-semibold text-slate-800 max-w-[200px]">{o.productName}</td>
+                        <td className="px-5 py-4 font-semibold text-slate-700">{o.quantity}</td>
+                        <td className="px-5 py-4 font-bold text-slate-900 whitespace-nowrap">{fm(o.totalPrice)}</td>
+                        <td className="px-5 py-4 min-w-[150px]">
+                          <div className="text-slate-800 font-medium">{o.receiverName}</div>
+                          <div className="text-xs text-slate-400">Phòng {o.roomNumber} - {o.receiverPhone}</div>
+                        </td>
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {o.status === 'CANCELLED' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                              Đã hủy đơn
+                            </span>
+                          ) : o.status === 'DELIVERED' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <Check className="w-3 h-3" /> Đã nhận hàng
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                              <Clock className="w-3 h-3" /> Giao Chủ Nhật
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {o.status === 'CANCELLED' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200">
                               Chưa thanh toán
                             </span>
-                          )
-                        ) : o.isPaid ? (
-                          <span 
-                            onClick={() => handleTogglePaymentStatus(o.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100 cursor-pointer hover:bg-green-100 transition-colors"
-                            title="Click để đổi sang Chưa thanh toán"
-                          >
-                            Đã thanh toán
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleTogglePaymentStatus(o.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 transition-colors"
-                            title="Click để đánh dấu Đã thanh toán"
-                          >
-                            Chưa thanh toán
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {o.status === 'CANCELLED' ? (
-                          <span className="text-slate-400">—</span>
-                        ) : o.paymentMethod === 'COD' ? (
-                          <span className="text-slate-600 font-medium flex items-center gap-1 text-xs">
-                            💵 Tiền mặt
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => setPaymentQrOrder(o)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 border border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition-colors"
-                            title="Click để xem mã QR chuyển khoản"
-                          >
-                            <QrCode className="w-3.5 h-3.5" /> Quét QR
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {o.status !== 'CANCELLED' ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setQrOrder(o)}
-                              className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                          ) : currentUser?.role === 'TENANT' ? (
+                            o.isPaid ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                                <Check className="w-3 h-3" /> Đã thanh toán
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
+                                Chưa thanh toán
+                              </span>
+                            )
+                          ) : o.isPaid ? (
+                            <span 
+                              onClick={() => handleTogglePaymentStatus(o.id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100 cursor-pointer hover:bg-green-100 transition-colors"
+                              title="Click để đổi sang Chưa thanh toán"
                             >
-                              <QrCode className="w-4 h-4" /> Xem QR
-                            </button>
+                              <Check className="w-3 h-3" /> Đã thanh toán
+                            </span>
+                          ) : (
                             <button
-                              onClick={() => handleCancelOrder(o.id)}
-                              className="flex items-center gap-1 text-xs font-bold text-red-600 border border-red-200 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
-                              title="Hủy đơn hàng"
+                              onClick={() => handleTogglePaymentStatus(o.id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 transition-colors cursor-pointer"
+                              title="Click để đánh dấu Đã thanh toán"
                             >
-                              Hủy đơn
+                              Chưa thanh toán
                             </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          )}
+                        </td>
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {o.status === 'CANCELLED' ? (
+                            <span className="text-slate-400">—</span>
+                          ) : o.paymentMethod === 'COD' ? (
+                            <span className="text-slate-600 font-medium flex items-center gap-1 text-xs">
+                              💵 Tiền mặt
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setPaymentQrOrder(o)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 border border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition-colors cursor-pointer"
+                              title="Click để xem mã QR chuyển khoản"
+                            >
+                              <QrCode className="w-3.5 h-3.5" /> Quét QR
+                            </button>
+                          )}
+                        </td>
+
+                        {/* CỘT THỜI GIAN HỦY ĐƠN CHÍNH XÁC ĐẾN TỪNG GIÂY (1 GIỜ) */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {o.status === 'CANCELLED' ? (
+                            <span className="text-xs text-slate-400 italic">Đã hủy đơn</span>
+                          ) : o.status === 'DELIVERED' ? (
+                            <span className="text-xs text-slate-400 font-medium">Đã giao hàng</span>
+                          ) : isCanCancel ? (
+                            <div className="flex flex-col gap-1 min-w-[150px]">
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200 w-fit shadow-xs">
+                                <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                <span>Còn {formatRemainingTime(remainingMs)}</span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                Đến: {formatExactDeadline(o.cancelDeadline)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 w-fit">
+                                Hết hạn hủy
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                (Quá hạn 1 giờ)
+                              </span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* THAO TÁC */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {o.status !== 'CANCELLED' ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setQrOrder(o)}
+                                className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                title="Xem QR nhận hàng khi shipper tới"
+                              >
+                                <QrCode className="w-4 h-4" /> Xem QR
+                              </button>
+                              {isCanCancel ? (
+                                <button
+                                  onClick={() => handleCancelOrder(o.id)}
+                                  className="flex items-center gap-1 text-xs font-bold text-red-600 border border-red-200 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-xs"
+                                  title={`Hủy đơn hàng (Còn ${formatRemainingTime(remainingMs)})`}
+                                >
+                                  Hủy đơn
+                                </button>
+                              ) : (
+                                <button
+                                  disabled
+                                  className="flex items-center gap-1 text-xs font-semibold text-slate-400 border border-slate-200 bg-slate-50 px-2 py-1.5 rounded-lg cursor-not-allowed opacity-60"
+                                  title="Đã quá thời hạn 1 giờ, không thể hủy đơn"
+                                >
+                                  Hết hạn hủy
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -839,9 +960,26 @@ export default function UniPackPage() {
               </span>
             </div>
 
-            <button onClick={() => setPaymentQrOrder(null)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl transition-all shadow-md mt-4">
-              Đóng
-            </button>
+            <div className="space-y-2 mt-4">
+              <button
+                onClick={() => {
+                  if (paymentQrOrder) {
+                    handleTogglePaymentStatus(paymentQrOrder.id);
+                    setPaymentQrOrder(null);
+                  }
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+              >
+                <Check className="w-4 h-4" /> Xác nhận đã chuyển khoản thành công
+              </button>
+
+              <button 
+                onClick={() => setPaymentQrOrder(null)} 
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl transition-all text-xs cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}
