@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: renteasy-backend
+    runtime: python
+    rootDir: smartrent-backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./smartrent_demo.db
+      - key: DATABASE_URL_SYNC
+        value: sqlite:///./smartrent_demo.db
+      - key: PYTHONIOENCODING
+        value: utf-8
+      - key: CORS_ORIGINS
+        value: '["*"]'

@@ -1,0 +1,2 @@
+# Root requirements proxying backend requirements
+-r smartrent-backend/requirements.txt

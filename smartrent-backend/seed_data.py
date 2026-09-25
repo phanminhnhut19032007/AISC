@@ -8,7 +8,7 @@ os.environ["DATABASE_URL_SYNC"] = "sqlite:///./smartrent_demo.db"
 sys.path.insert(0, os.path.dirname(__file__))
 
 
-async def seed():
+async def seed(reset: bool = False):
     from app.core.database import init_db, AsyncSessionLocal, engine, Base
     from app.models.user import User, UserRole
     from app.models.building import Building, Room, RoomStatus
@@ -22,11 +22,12 @@ async def seed():
     from datetime import date, datetime, timezone, timedelta
     import secrets, string
 
-    async with engine.begin() as conn:
-        from app.models import base  # noqa: F401
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    print("[Seed] Database reset and tables initialized")
+    if reset:
+        async with engine.begin() as conn:
+            from app.models import base  # noqa: F401
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        print("[Seed] Database reset and tables initialized")
 
     async with AsyncSessionLocal() as db:
         # ── Owner ────────────────────────────────────────────────────────────
@@ -234,4 +235,4 @@ async def seed():
 
 
 if __name__ == "__main__":
-    asyncio.run(seed())
+    asyncio.run(seed(reset=True))
