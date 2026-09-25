@@ -8,7 +8,8 @@ import {
   Phone, Lock, ArrowRight, ShieldCheck, Users, 
   ArrowLeft, Eye, EyeOff, Check, 
   ChevronRight, Building2, Key, User as UserIcon, UserPlus,
-  MessageSquare, RefreshCw, Smartphone, Sparkles
+  MessageSquare, RefreshCw, Smartphone, Sparkles, Shield,
+  CheckCircle2, Clock
 } from 'lucide-react';
 
 function LoginForm() {
@@ -34,11 +35,12 @@ function LoginForm() {
   const [obscureRegPassword, setObscureRegPassword] = useState(true);
   const [obscureConfirmPassword, setObscureConfirmPassword] = useState(true);
   
-  // OTP state
-  const [otpCode, setOtpCode] = useState('');
+  // 6-digit OTP state
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [demoOtp, setDemoOtp] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -64,6 +66,15 @@ function LoginForm() {
       if (countdownRef.current) clearTimeout(countdownRef.current);
     };
   }, [countdown]);
+
+  // Auto focus first OTP input when step changes to VERIFY_OTP
+  useEffect(() => {
+    if (regStep === 'VERIFY_OTP') {
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 150);
+    }
+  }, [regStep]);
 
   // 1. Dynamic Animated Aurora Mesh & Floating Waves Canvas
   useEffect(() => {
@@ -182,7 +193,7 @@ function LoginForm() {
         height * 0.8 + Math.cos(t * 0.7) * 40,
         width * 0.5,
         '251, 191, 36',
-        0.15 + Math.sin(t) * 0.8 * 0.03
+        0.15 + Math.sin(t * 0.8) * 0.03
       );
 
       drawOrb(
@@ -341,6 +352,75 @@ function LoginForm() {
     }
   };
 
+  // Điền nhanh mã OTP vào 6 ô
+  const fillOtp = (code: string) => {
+    const digits = code.replace(/[^0-9]/g, '').slice(0, 6).split('');
+    while (digits.length < 6) digits.push('');
+    setOtpDigits(digits);
+    inputRefs.current[5]?.focus();
+    toast.success('Đã điền mã OTP!', { icon: '✨' });
+  };
+
+  // Xử lý khi nhập từng ô OTP
+  const handleOtpChange = (index: number, val: string) => {
+    const clean = val.replace(/[^0-9]/g, '');
+    if (!clean) {
+      const next = [...otpDigits];
+      next[index] = '';
+      setOtpDigits(next);
+      return;
+    }
+
+    // Nếu người dùng paste chuỗi số dài
+    if (clean.length > 1) {
+      const next = [...otpDigits];
+      const chars = clean.slice(0, 6).split('');
+      chars.forEach((c, i) => {
+        if (index + i < 6) next[index + i] = c;
+      });
+      setOtpDigits(next);
+      const nextFocus = Math.min(5, index + chars.length);
+      inputRefs.current[nextFocus]?.focus();
+      return;
+    }
+
+    const next = [...otpDigits];
+    next[index] = clean[0];
+    setOtpDigits(next);
+
+    // Tự động chuyển qua ô tiếp theo
+    if (index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (!otpDigits[index] && index > 0) {
+        const next = [...otpDigits];
+        next[index - 1] = '';
+        setOtpDigits(next);
+        inputRefs.current[index - 1]?.focus();
+      } else {
+        const next = [...otpDigits];
+        next[index] = '';
+        setOtpDigits(next);
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '');
+    if (pasted) {
+      fillOtp(pasted);
+    }
+  };
+
   // Bước 1: Gửi mã OTP qua SMS
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -376,7 +456,7 @@ function LoginForm() {
       const res = await authApi.sendOtp(phone, 'REGISTER');
       const generatedOtp = res.data.otp_demo || `${Math.floor(100000 + Math.random() * 900000)}`;
       setDemoOtp(generatedOtp);
-      setOtpCode('');
+      setOtpDigits(['', '', '', '', '', '']);
       setRegStep('VERIFY_OTP');
       setCountdown(60);
 
@@ -385,10 +465,9 @@ function LoginForm() {
         { duration: 4000 }
       );
     } catch (err: any) {
-      // Fallback giả lập OTP cho demo
       const fallbackOtp = `${Math.floor(100000 + Math.random() * 900000)}`;
       setDemoOtp(fallbackOtp);
-      setOtpCode('');
+      setOtpDigits(['', '', '', '', '', '']);
       setRegStep('VERIFY_OTP');
       setCountdown(60);
       toast.success(`📲 Mã OTP đã gửi về SMS số ${phone}!`);
@@ -406,13 +485,17 @@ function LoginForm() {
       const res = await authApi.sendOtp(registerForm.phone, 'REGISTER');
       const generatedOtp = res.data.otp_demo || `${Math.floor(100000 + Math.random() * 900000)}`;
       setDemoOtp(generatedOtp);
+      setOtpDigits(['', '', '', '', '', '']);
       setCountdown(60);
       toast.success('Đã gửi lại mã OTP mới qua SMS!');
+      inputRefs.current[0]?.focus();
     } catch (_) {
       const fallbackOtp = `${Math.floor(100000 + Math.random() * 900000)}`;
       setDemoOtp(fallbackOtp);
+      setOtpDigits(['', '', '', '', '', '']);
       setCountdown(60);
       toast.success('Đã gửi lại mã OTP mới!');
+      inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
     }
@@ -421,10 +504,10 @@ function LoginForm() {
   // Bước 2: Xác thực OTP và Hoàn tất đăng ký
   const handleVerifyOtpAndRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = otpCode.trim();
+    const code = otpDigits.join('').trim();
 
     if (!code || code.length < 6) {
-      setErrorMessage('Vui lòng nhập đủ mã OTP gồm 6 chữ số.');
+      setErrorMessage('Vui lòng nhập đủ 6 chữ số của mã OTP.');
       return;
     }
 
@@ -543,6 +626,7 @@ function LoginForm() {
   };
 
   const isOwner = selectedRole === 'OWNER';
+  const isOtpComplete = otpDigits.every((d) => d !== '');
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-[#F8FAFC] flex items-center justify-center p-4 selection:bg-amber-100 selection:text-amber-900">
@@ -1071,92 +1155,140 @@ function LoginForm() {
                       </div>
                     </form>
                   ) : (
-                    /* Bước 2: Nhập mã OTP SMS */
-                    <form onSubmit={handleVerifyOtpAndRegister} className="space-y-4 pt-1">
-                      <div className="text-center space-y-1.5">
-                        <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
-                          <MessageSquare className="w-6 h-6 animate-bounce" />
+                    /* ─── BƯỚC 2: GIAO DIỆN NHẬP MÃ OTP 6 CHỮ SỐ CAO CẤP ─── */
+                    <form onSubmit={handleVerifyOtpAndRegister} className="space-y-4 pt-0.5">
+                      {/* Header Badge */}
+                      <div className="text-center space-y-2">
+                        <div className="relative inline-flex">
+                          <div className="absolute -inset-1.5 bg-gradient-to-r from-amber-400 to-orange-400 rounded-full blur-sm opacity-50 animate-pulse" />
+                          <div className="relative w-13 h-13 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-300 flex items-center justify-center text-amber-600 shadow-sm">
+                            <Shield className="w-7 h-7" />
+                          </div>
                         </div>
-                        <h3 className="text-[16px] font-bold text-slate-900">
-                          Nhập mã xác thực OTP
-                        </h3>
-                        <p className="text-[12px] text-slate-500">
-                          Mã 6 chữ số đã được gửi qua tin nhắn SMS tới số{' '}
-                          <span className="font-bold text-slate-800">
-                            {registerForm.phone}
-                          </span>
-                        </p>
+
+                        <div>
+                          <h3 className="text-[17px] font-black text-slate-900 tracking-tight">
+                            Xác thực mã bảo mật OTP
+                          </h3>
+                          <div className="flex items-center justify-center gap-1.5 mt-1 text-[12px] text-slate-500">
+                            <span>Gửi qua SMS tới số</span>
+                            <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1 font-mono">
+                              <Smartphone className="w-3.5 h-3.5 text-slate-600" />
+                              {registerForm.phone}
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Simulated SMS Toast / Demo badge */}
+                      {/* iOS Glassmorphism Simulated SMS Notification Card */}
                       {demoOtp && (
-                        <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-2 shadow-sm">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                            <div className="truncate">
-                              <p className="text-[11px] font-semibold text-amber-900">
-                                📩 SMS Demo: Mã OTP của bạn là{' '}
-                                <span className="font-mono font-black text-amber-700 text-sm">
-                                  {demoOtp}
-                                </span>
-                              </p>
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/[0.08] via-orange-500/[0.05] to-amber-500/[0.12] border border-amber-300/80 p-3.5 shadow-[0_4px_16px_rgba(245,158,11,0.1)] transition-all">
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-start gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30 flex-shrink-0 mt-0.5">
+                                <MessageSquare className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-black tracking-wider uppercase text-amber-900">
+                                    Tin nhắn SMS
+                                  </span>
+                                  <span className="w-1 h-1 rounded-full bg-amber-400" />
+                                  <span className="text-[10px] text-amber-700/80 font-medium">Vừa xong</span>
+                                </div>
+                                <p className="text-[12px] text-slate-700 font-medium mt-0.5 leading-snug">
+                                  Mã OTP đăng ký REASY của bạn là:{' '}
+                                  <span className="font-mono font-black text-[15px] text-amber-700 tracking-wider bg-amber-100/80 px-1.5 py-0.5 rounded-md">
+                                    {demoOtp}
+                                  </span>
+                                </p>
+                              </div>
                             </div>
+
+                            <button
+                              type="button"
+                              onClick={() => fillOtp(demoOtp)}
+                              className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-[11px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1 flex-shrink-0"
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              <span>Điền nhanh</span>
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setOtpCode(demoOtp)}
-                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer flex-shrink-0"
-                          >
-                            Tự điền
-                          </button>
                         </div>
                       )}
 
-                      {/* OTP Input Field */}
-                      <div>
-                        <label className="block text-[12px] font-bold text-[#334155] mb-2 text-center">
-                          Nhập 6 số mã OTP
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            maxLength={6}
-                            placeholder="••••••"
-                            value={otpCode}
-                            onChange={(e) =>
-                              setOtpCode(e.target.value.replace(/[^0-9]/g, ''))
-                            }
-                            autoFocus
-                            className="w-full bg-[#F8FAFC] border-2 border-[#CBD5E1] focus:border-amber-500 rounded-2xl px-4 py-3.5 text-center text-2xl font-mono font-black tracking-[10px] text-[#0F172A] focus:outline-none focus:bg-white transition-all"
-                            required
-                          />
+                      {/* 6 Individual PIN Boxes */}
+                      <div className="pt-1">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                          {otpDigits.map((digit, index) => (
+                            <div key={index} className="flex-1 max-w-[56px] relative">
+                              <input
+                                ref={(el) => {
+                                  inputRefs.current[index] = el;
+                                }}
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={1}
+                                value={digit}
+                                onChange={(e) => handleOtpChange(index, e.target.value)}
+                                onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                onPaste={handleOtpPaste}
+                                className={`w-full h-13 sm:h-15 text-center text-2xl font-mono font-black rounded-2xl border-2 transition-all duration-200 focus:outline-none shadow-sm ${
+                                  digit !== ''
+                                    ? isOwner
+                                      ? 'border-blue-500 bg-blue-50/40 text-blue-900 shadow-blue-500/10'
+                                      : 'border-amber-500 bg-amber-50/40 text-amber-950 shadow-amber-500/10'
+                                    : 'border-slate-200 bg-[#F8FAFC] text-slate-700 focus:bg-white'
+                                } ${
+                                  isOwner
+                                    ? 'focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20'
+                                    : 'focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20'
+                                }`}
+                              />
+                              {/* Bottom Accent Dot */}
+                              <div
+                                className={`w-1.5 h-1.5 rounded-full mx-auto mt-1.5 transition-all ${
+                                  digit !== ''
+                                    ? isOwner
+                                      ? 'bg-blue-600 scale-125'
+                                      : 'bg-amber-600 scale-125'
+                                    : 'bg-slate-200'
+                                }`}
+                              />
+                            </div>
+                          ))}
                         </div>
                       </div>
 
-                      {/* Resend Countdown */}
-                      <div className="flex items-center justify-between text-[12px] px-1">
+                      {/* Resend Countdown & Back Button */}
+                      <div className="flex items-center justify-between text-[12px] px-0.5 pt-0.5">
                         <button
                           type="button"
                           onClick={() => {
                             setRegStep('INPUT_FORM');
                             setErrorMessage(null);
                           }}
-                          className="text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                          className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer flex items-center gap-1 transition-colors"
                         >
-                          ← Đổi số điện thoại
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                          <span>Đổi số điện thoại</span>
                         </button>
 
                         <div>
                           {countdown > 0 ? (
-                            <span className="text-slate-400 font-medium">
-                              Gửi lại sau <strong className="text-amber-600">{countdown}s</strong>
-                            </span>
+                            <div className="flex items-center gap-1 text-slate-400 font-medium bg-slate-100 px-2.5 py-1 rounded-full">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>
+                                Gửi lại sau <strong className="text-amber-600 font-bold">{countdown}s</strong>
+                              </span>
+                            </div>
                           ) : (
                             <button
                               type="button"
                               onClick={handleResendOtp}
                               disabled={loading}
-                              className="text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 cursor-pointer"
+                              className="text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full cursor-pointer transition-all active:scale-95"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
                               <span>Gửi lại mã OTP</span>
@@ -1176,13 +1308,15 @@ function LoginForm() {
                       {/* Submit Verify & Register Button */}
                       <button
                         type="submit"
-                        disabled={loading || isSuccess || otpCode.length < 6}
+                        disabled={loading || isSuccess || !isOtpComplete}
                         className={`w-full h-12 rounded-[14px] text-white font-extrabold text-[14.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-lg active:scale-[0.97] mt-2 ${
                           isSuccess
                             ? 'bg-gradient-to-r from-[#10B981] to-[#059669] shadow-emerald-500/30'
+                            : !isOtpComplete
+                            ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
                             : isOwner
-                            ? 'bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-blue-500/25 disabled:opacity-50'
-                            : 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] shadow-amber-500/25 disabled:opacity-50'
+                            ? 'bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-blue-500/25'
+                            : 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] shadow-amber-500/25'
                         }`}
                       >
                         {isSuccess ? (
@@ -1199,7 +1333,7 @@ function LoginForm() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <Check className="w-4 h-4" />
+                            <CheckCircle2 className="w-4 h-4" />
                             <span>Xác thực & Hoàn tất Đăng ký</span>
                           </div>
                         )}
