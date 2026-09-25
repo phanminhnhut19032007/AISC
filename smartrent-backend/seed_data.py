@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 
 async def seed():
-    from app.core.database import init_db, AsyncSessionLocal
+    from app.core.database import init_db, AsyncSessionLocal, engine, Base
     from app.models.user import User, UserRole
     from app.models.building import Building, Room, RoomStatus
     from app.models.contract import Contract, ContractStatus
@@ -22,8 +22,11 @@ async def seed():
     from datetime import date, datetime, timezone, timedelta
     import secrets, string
 
-    await init_db()
-    print("[Seed] Database initialized")
+    async with engine.begin() as conn:
+        from app.models import base  # noqa: F401
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    print("[Seed] Database reset and tables initialized")
 
     async with AsyncSessionLocal() as db:
         # ── Owner ────────────────────────────────────────────────────────────
@@ -225,7 +228,8 @@ async def seed():
         await db.commit()
 
     print("[Seed] Done! Demo data seeded successfully.")
-    print("[Seed] Owner login: phone=0901234567 / pass=smartrent123")
+    print("[Seed] Owner login:  phone=0388430402 / pass=MinhNhut1 (Chu tro)")
+    print("[Seed] Tenant login: phone=0388430402 / pass=MinhNhut2 (Minh Nhut)")
     print("[Seed] API docs: http://localhost:8000/docs")
 
 
