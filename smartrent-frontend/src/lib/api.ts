@@ -113,6 +113,8 @@ export interface ChatMessage {
 export const authApi = {
   login: (phone: string, password: string, role?: string) =>
     api.post<TokenResponse>('/auth/login', { phone, password, ...(role ? { role } : {}) }),
+  googleLogin: (idToken: string, role?: string) =>
+    api.post<TokenResponse>('/auth/google', { id_token: idToken, role }),
   register: (data: { full_name: string; phone: string; password: string; role: string }) =>
     api.post<TokenResponse>('/auth/register', data),
   me: () => api.get<User>('/auth/me'),

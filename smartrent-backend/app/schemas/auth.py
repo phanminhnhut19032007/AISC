@@ -28,6 +28,11 @@ class LoginRequest(BaseModel):
     role: Optional[UserRole] = None
 
 
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+    role: Optional[UserRole] = UserRole.TENANT
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

@@ -1,11 +1,22 @@
-"""Auth routes — Register and Login."""
+import secrets
+from datetime import datetime, timezone
+import httpx
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentUser
 from app.core.security import hash_password, verify_password, create_access_token
-from app.models.user import User
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut, UserUpdate, ChangePasswordRequest, UpdateFCMToken
+from app.models.user import User, UserRole
+from app.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    GoogleLoginRequest,
+    TokenResponse,
+    UserOut,
+    UserUpdate,
+    ChangePasswordRequest,
+    UpdateFCMToken,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -55,6 +66,78 @@ async def login(body: LoginRequest, db: DB):
 
     if not user:
         raise HTTPException(status_code=401, detail="Số điện thoại hoặc mật khẩu không đúng")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
+
+    token = create_access_token(str(user.id))
+    return TokenResponse(
+        access_token=token,
+        user_id=str(user.id),
+        role=user.role,
+        full_name=user.full_name,
+    )
+
+
+@router.post("/google", response_model=TokenResponse)
+async def google_login(body: GoogleLoginRequest, db: DB):
+    """Đăng nhập hoặc đăng ký tài khoản qua Google OAuth Token."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"id_token": body.id_token},
+            )
+        except Exception:
+            raise HTTPException(status_code=500, detail="Không thể kết nối đến máy chủ Google")
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=400, detail="Google Token không hợp lệ hoặc đã hết hạn")
+
+    payload = resp.json()
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Tài khoản Google không cung cấp email")
+
+    full_name = payload.get("name") or payload.get("given_name") or "Người dùng Google"
+    picture = payload.get("picture")
+    google_sub = payload.get("sub", "")
+    target_role = body.role or UserRole.TENANT
+
+    # 1. Look up existing user by email & role
+    result = await db.execute(
+        select(User).where(User.email == email, User.role == target_role)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        # Generate a unique placeholder phone for this role
+        sub_tail = google_sub[-8:] if len(google_sub) >= 8 else f"{secrets.randbelow(90000000) + 10000000}"
+        alt_phone = f"09{sub_tail}"
+
+        # Ensure uniqueness
+        existing_phone = await db.execute(
+            select(User).where(User.phone == alt_phone, User.role == target_role)
+        )
+        if existing_phone.scalar_one_or_none():
+            alt_phone = f"08{secrets.randbelow(90000000) + 10000000}"
+
+        user = User(
+            full_name=full_name,
+            phone=alt_phone,
+            email=email,
+            avatar_url=picture,
+            hashed_password=hash_password(secrets.token_urlsafe(16)),
+            role=target_role,
+        )
+        db.add(user)
+        await db.flush()
+    else:
+        if picture and not user.avatar_url:
+            user.avatar_url = picture
+        if full_name and user.full_name == "Người dùng Google":
+            user.full_name = full_name
+        await db.flush()
+
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
 
