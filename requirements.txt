@@ -1,2 +1,38 @@
-# Root requirements proxying backend requirements
--r smartrent-backend/requirements.txt
+# FastAPI core
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
+# Database & Async SQLAlchemy
+sqlalchemy[asyncio]>=2.0.30
+greenlet>=3.0.3
+alembic>=1.13.0
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+aiosqlite>=0.20.0
+
+# Pydantic & Settings
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+pydantic[email]>=2.7.0
+
+# Auth & Security
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.1
+python-multipart>=0.0.9
+
+# HTTP client & Requests
+httpx>=0.27.0
+requests>=2.32.0
+
+# Image & QR Code
+pillow>=10.3.0
+qrcode[pil]>=7.4.2
+
+# Cache & Redis
+redis>=5.0.4
+
+# Utils
+python-dotenv>=1.0.1
+python-dateutil>=2.9.0
+pytz>=2024.1
+boto3>=1.34.0
