@@ -25,6 +25,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     phone: str
     password: str
+    role: Optional[UserRole] = None
 
 
 class TokenResponse(BaseModel):

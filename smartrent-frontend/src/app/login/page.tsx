@@ -7,7 +7,7 @@ import { saveAuth } from '@/lib/auth';
 import { 
   Phone, Lock, ArrowRight, ShieldCheck, Users, 
   ArrowLeft, Home as HomeIcon, Eye, EyeOff, Check, 
-  Lightbulb, ChevronRight
+  ChevronRight
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -197,10 +197,8 @@ export default function LoginPage() {
   const selectRole = (role: 'OWNER' | 'TENANT') => {
     setSelectedRole(role);
     setErrorMessage(null);
-    if (role === 'OWNER') {
-      setForm({ phone: '0901234567', password: 'smartrent123' });
-    } else {
-      setForm({ phone: '0912345001', password: 'tenant123' });
+    setForm({ phone: '', password: '' });
+    if (role === 'TENANT') {
       setRoomCode('101');
     }
   };
@@ -225,7 +223,7 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
-      const res = await authApi.login(phone, password);
+      const res = await authApi.login(phone, password, selectedRole || undefined);
 
       if (res.data.role !== selectedRole) {
         setErrorMessage(
@@ -396,7 +394,7 @@ export default function LoginPage() {
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                     <input
                       type="tel"
-                      placeholder="0901234567"
+                      placeholder="0388430402"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
                       className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
@@ -447,7 +445,9 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setObscurePassword(!obscurePassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
+                      title={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
+                      aria-label={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] p-1 rounded-md transition-colors cursor-pointer"
                     >
                       {obscurePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -494,27 +494,6 @@ export default function LoginPage() {
                   )}
                 </button>
               </form>
-
-              {/* Demo Account Box (Clean Light Theme) */}
-              <div
-                className={`p-3 rounded-xl border text-[11px] ${
-                  isOwner
-                    ? 'bg-[#EFF6FF] border-[#BFDBFE] text-[#1E40AF]'
-                    : 'bg-[#FFFBEB] border-[#FDE68A] text-[#92400E]'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-bold mb-1">
-                  <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>Tài khoản demo sẵn:</span>
-                </div>
-                <p className="font-medium">
-                  {isOwner ? (
-                    <>SĐT: <strong className="text-[#1D4ED8]">0901234567</strong> | Mật khẩu: <strong className="text-[#1D4ED8]">smartrent123</strong></>
-                  ) : (
-                    <>SĐT: <strong className="text-[#B45309]">0912345001</strong> | Pass: <strong className="text-[#B45309]">tenant123</strong> | Phòng: <strong className="text-[#B45309]">101</strong></>
-                  )}
-                </p>
-              </div>
             </div>
           )}
         </div>

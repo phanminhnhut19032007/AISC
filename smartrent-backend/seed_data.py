@@ -28,10 +28,10 @@ async def seed():
     async with AsyncSessionLocal() as db:
         # ── Owner ────────────────────────────────────────────────────────────
         owner = User(
-            full_name="Nguyen Van Chu Tro",
-            phone="0901234567",
+            full_name="Chu tro",
+            phone="0388430402",
             email="chuatro@smartrent.vn",
-            hashed_password=hash_password("smartrent123"),
+            hashed_password=hash_password("MinhNhut1"),
             role=UserRole.OWNER,
         )
         db.add(owner)
@@ -39,14 +39,14 @@ async def seed():
         # ── Tenants ──────────────────────────────────────────────────────────
         tenants = []
         tenant_data = [
-            ("Tran Thi Mai", "0912345001"),
-            ("Le Van Nam", "0912345002"),
-            ("Pham Thi Hoa", "0912345003"),
-            ("Nguyen Van Binh", "0912345004"),
-            ("Hoang Thi Lan", "0912345005"),
+            ("Minh Nhut", "0388430402", "MinhNhut2"),
+            ("Le Van Nam", "0912345002", "tenant123"),
+            ("Pham Thi Hoa", "0912345003", "tenant123"),
+            ("Nguyen Van Binh", "0912345004", "tenant123"),
+            ("Hoang Thi Lan", "0912345005", "tenant123"),
         ]
-        for name, phone in tenant_data:
-            t = User(full_name=name, phone=phone, hashed_password=hash_password("tenant123"), role=UserRole.TENANT)
+        for name, phone, passw in tenant_data:
+            t = User(full_name=name, phone=phone, hashed_password=hash_password(passw), role=UserRole.TENANT)
             db.add(t)
             tenants.append(t)
 

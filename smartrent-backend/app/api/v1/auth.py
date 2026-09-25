@@ -13,10 +13,10 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: DB):
     """Đăng ký tài khoản mới."""
-    # Check phone uniqueness
-    existing = await db.execute(select(User).where(User.phone == body.phone))
+    # Check phone uniqueness per role
+    existing = await db.execute(select(User).where(User.phone == body.phone, User.role == body.role))
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Số điện thoại đã được đăng ký")
+        raise HTTPException(status_code=400, detail="Số điện thoại đã được đăng ký cho vai trò này")
 
     user = User(
         full_name=body.full_name,
@@ -40,10 +40,20 @@ async def register(body: RegisterRequest, db: DB):
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: DB):
     """Đăng nhập bằng số điện thoại và mật khẩu."""
-    result = await db.execute(select(User).where(User.phone == body.phone))
-    user = result.scalar_one_or_none()
+    query = select(User).where(User.phone == body.phone)
+    if body.role is not None:
+        query = query.where(User.role == body.role)
+    result = await db.execute(query)
+    users = result.scalars().all()
 
-    if not user or not verify_password(body.password, user.hashed_password):
+    # Find the user matching the provided password
+    user = None
+    for u in users:
+        if verify_password(body.password, u.hashed_password):
+            user = u
+            break
+
+    if not user:
         raise HTTPException(status_code=401, detail="Số điện thoại hoặc mật khẩu không đúng")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
@@ -73,9 +83,9 @@ async def update_me(body: UserUpdate, current_user: CurrentUser, db: DB):
     if body.phone is not None and body.phone.strip():
         cleaned_phone = body.phone.strip()
         if cleaned_phone != current_user.phone:
-            existing = await db.execute(select(User).where(User.phone == cleaned_phone, User.id != current_user.id))
+            existing = await db.execute(select(User).where(User.phone == cleaned_phone, User.role == current_user.role, User.id != current_user.id))
             if existing.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail="Số điện thoại này đã được sử dụng")
+                raise HTTPException(status_code=400, detail="Số điện thoại này đã được sử dụng cho vai trò này")
             current_user.phone = cleaned_phone
     if body.password is not None and body.password.strip():
         current_user.hashed_password = hash_password(body.password.strip())

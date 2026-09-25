@@ -2,7 +2,7 @@
 import enum
 import uuid
 from typing import Optional, List
-from sqlalchemy import String, Boolean, Enum as SAEnum
+from sqlalchemy import String, Boolean, Enum as SAEnum, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import UUIDBase
 
@@ -16,9 +16,12 @@ class UserRole(str, enum.Enum):
 
 class User(UUIDBase):
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("phone", "role", name="uq_user_phone_role"),
+    )
 
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     national_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)

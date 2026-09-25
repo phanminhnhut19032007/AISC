@@ -111,8 +111,8 @@ export interface ChatMessage {
 
 // ---- Auth API ----
 export const authApi = {
-  login: (phone: string, password: string) =>
-    api.post<TokenResponse>('/auth/login', { phone, password }),
+  login: (phone: string, password: string, role?: string) =>
+    api.post<TokenResponse>('/auth/login', { phone, password, ...(role ? { role } : {}) }),
   register: (data: { full_name: string; phone: string; password: string; role: string }) =>
     api.post<TokenResponse>('/auth/register', data),
   me: () => api.get<User>('/auth/me'),
