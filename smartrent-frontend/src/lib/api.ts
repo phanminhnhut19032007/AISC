@@ -17,11 +17,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Redirect to login on 401
+// Redirect to login on 401 (only for protected dashboard pages, not login requests)
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && typeof window !== 'undefined') {
+    if (
+      err.response?.status === 401 &&
+      typeof window !== 'undefined' &&
+      !window.location.pathname.startsWith('/login') &&
+      !err.config?.url?.includes('/auth/login') &&
+      !err.config?.url?.includes('/auth/google')
+    ) {
       Cookies.remove('smartrent_token');
       window.location.href = '/login';
     }
