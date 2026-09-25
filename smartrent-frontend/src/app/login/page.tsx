@@ -1,29 +1,51 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { authApi } from '@/lib/api';
 import { saveAuth } from '@/lib/auth';
 import { 
   Phone, Lock, ArrowRight, ShieldCheck, Users, 
-  ArrowLeft, Home as HomeIcon, Eye, EyeOff, Check, 
-  ChevronRight, Building2, Key
+  ArrowLeft, Eye, EyeOff, Check, 
+  ChevronRight, Building2, Key, User as UserIcon, UserPlus
 } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [selectedRole, setSelectedRole] = useState<'' | 'OWNER' | 'TENANT'>('');
+  
+  // Login form
   const [form, setForm] = useState({ phone: '', password: '' });
   const [buildingCode, setBuildingCode] = useState('MC892');
   const [roomCode, setRoomCode] = useState('P101A');
   const [obscurePassword, setObscurePassword] = useState(true);
+
+  // Register form
+  const [registerForm, setRegisterForm] = useState({
+    fullName: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [obscureRegPassword, setObscureRegPassword] = useState(true);
+  const [obscureConfirmPassword, setObscureConfirmPassword] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // 1. Dynamic Animated Aurora Mesh & Floating Waves Canvas (Recreation of Flutter's _AuroraWavesPainter)
+  // Check query params if mode is register
+  useEffect(() => {
+    if (searchParams.get('mode') === 'register' || searchParams.get('tab') === 'register') {
+      setAuthMode('REGISTER');
+    }
+  }, [searchParams]);
+
+  // 1. Dynamic Animated Aurora Mesh & Floating Waves Canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -42,7 +64,7 @@ export default function LoginPage() {
     window.addEventListener('resize', handleResize);
 
     const startTime = performance.now();
-    const durationMs = 12000; // 12 seconds loop, matching Flutter
+    const durationMs = 12000;
 
     const drawOrb = (
       centerX: number,
@@ -110,7 +132,7 @@ export default function LoginPage() {
 
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Base gradient wash (#FFFFFF -> #F8FAFC -> #F1F5F9)
+      // Base gradient wash
       const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
       bgGrad.addColorStop(0, '#FFFFFF');
       bgGrad.addColorStop(0.5, '#F8FAFC');
@@ -118,8 +140,7 @@ export default function LoginPage() {
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // 2. Animated Floating Radiant Pastel Orbs
-      // Orb 1: Sky Cyan (#38BDF8 -> 56, 189, 248)
+      // Animated Floating Pastel Orbs
       drawOrb(
         width * 0.15 + Math.sin(t) * 45,
         height * 0.18 + Math.cos(t * 0.8) * 35,
@@ -128,7 +149,6 @@ export default function LoginPage() {
         0.16 + Math.sin(t) * 0.03
       );
 
-      // Orb 2: Soft Royal Indigo (#818CF8 -> 129, 140, 248)
       drawOrb(
         width * 0.88 + Math.cos(t * 0.9) * 40,
         height * 0.28 + Math.sin(t * 1.1) * 30,
@@ -137,7 +157,6 @@ export default function LoginPage() {
         0.14 + Math.cos(t * 0.03)
       );
 
-      // Orb 3: Sunshine Amber (#FBBF24 -> 251, 191, 36)
       drawOrb(
         width * 0.82 + Math.sin(t * 1.2) * 50,
         height * 0.8 + Math.cos(t * 0.7) * 40,
@@ -146,7 +165,6 @@ export default function LoginPage() {
         0.15 + Math.sin(t * 0.8) * 0.03
       );
 
-      // Orb 4: Mint Green (#34D399 -> 52, 211, 153)
       drawOrb(
         width * 0.1 + Math.cos(t * 0.7) * 35,
         height * 0.82 + Math.sin(t * 0.9) * 35,
@@ -155,8 +173,7 @@ export default function LoginPage() {
         0.12 + Math.cos(t * 1.1) * 0.03
       );
 
-      // 3. Flowing Sinusoidal Silk Waves
-      // Wave 1
+      // Flowing Sinusoidal Waves
       drawFlowingWave(
         height * 0.38,
         28,
@@ -170,7 +187,6 @@ export default function LoginPage() {
         ]
       );
 
-      // Wave 2
       drawFlowingWave(
         height * 0.65,
         34,
@@ -269,7 +285,7 @@ export default function LoginPage() {
         router.push('/dashboard');
       }, 700);
     } catch (err: any) {
-      // Tối ưu trải nghiệm: Fallback trực tiếp cho 2 tài khoản Chu tro & Minh Nhut
+      // Fallback cho 2 tài khoản demo Chu tro & Minh Nhut
       if (
         phone === '0388430402' &&
         ((selectedRole === 'OWNER' && password === 'MinhNhut1') ||
@@ -299,6 +315,64 @@ export default function LoginPage() {
 
       setErrorMessage(
         err.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
+      );
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fullName = registerForm.fullName.trim();
+    const phone = registerForm.phone.trim();
+    const password = registerForm.password.trim();
+    const confirmPassword = registerForm.confirmPassword.trim();
+
+    if (!fullName || !phone || !password || !confirmPassword) {
+      setErrorMessage('Vui lòng điền đầy đủ tất cả các trường.');
+      return;
+    }
+
+    if (phone.length < 9) {
+      setErrorMessage('Số điện thoại không hợp lệ (tối thiểu 9-10 chữ số).');
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMessage('Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await authApi.register({
+        full_name: fullName,
+        phone,
+        password,
+        role: selectedRole || 'TENANT',
+      });
+
+      saveAuth(res.data.access_token, {
+        id: res.data.user_id,
+        full_name: res.data.full_name,
+        role: res.data.role,
+      });
+
+      setIsSuccess(true);
+      toast.success(`Đăng ký thành công! Chào mừng, ${res.data.full_name}!`);
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 700);
+    } catch (err: any) {
+      setErrorMessage(
+        err.response?.data?.detail || 'Đăng ký thất bại. Số điện thoại có thể đã được sử dụng.'
       );
       setLoading(false);
     }
@@ -385,13 +459,11 @@ export default function LoginPage() {
       />
 
       {/* 2. Main Foreground Content */}
-      <div className="w-full max-w-[440px] relative z-10 flex flex-col items-center">
+      <div className="w-full max-w-[450px] relative z-10 flex flex-col items-center">
         {/* Floating Elegant Logo Card with Soft Glow Halo */}
         <div className="relative mb-4 group">
-          {/* Soft pastel ambient halo */}
           <div className="absolute -inset-2 bg-gradient-to-r from-[#FDE68A] via-[#BAE6FD] to-[#93C5FD] rounded-[26px] blur-xl opacity-75 animate-pulse" />
 
-          {/* White Card with crisp REASY Logo */}
           <div className="relative w-[116px] h-[80px] p-2 bg-white rounded-[22px] border border-[#E2E8F0] shadow-[0_10px_25px_-5px_rgba(15,23,42,0.08),0_4px_12px_rgba(56,189,248,0.2)] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <img
               src="/logo.jpg"
@@ -402,7 +474,7 @@ export default function LoginPage() {
         </div>
 
         {/* Title: Chào mừng đến REASY */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <h1 className="text-[23px] font-extrabold text-[#0F172A] tracking-tight flex items-center justify-center gap-1.5">
             <span>Chào mừng đến</span>
             <span className="bg-gradient-to-r from-[#D97706] via-[#0284C7] to-[#2563EB] bg-clip-text text-transparent text-[25px] font-black tracking-wide">
@@ -424,7 +496,7 @@ export default function LoginPage() {
                   Xác nhận vai trò truy cập
                 </h2>
                 <p className="text-[12px] text-[#64748B] mt-1">
-                  Vui lòng chọn cổng đăng nhập của bạn để tiếp tục
+                  Vui lòng chọn cổng truy cập của bạn để tiếp tục
                 </p>
               </div>
 
@@ -471,7 +543,7 @@ export default function LoginPage() {
               </div>
             </div>
           ) : (
-            /* ─── BƯỚC 2: FORM ĐĂNG NHẬP ─── */
+            /* ─── BƯỚC 2: FORM ĐĂNG NHẬP / ĐĂNG KÝ ─── */
             <div className="space-y-4">
               {/* Header with Back button & Role badge */}
               <div className="flex items-center justify-between">
@@ -498,192 +570,410 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-3.5 pt-1">
-                {/* 1. Phone Input */}
-                <div>
-                  <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
-                    Số điện thoại đăng nhập
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                    <input
-                      type="tel"
-                      placeholder="0388430402"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
-                        isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
-                      } transition-all`}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* 2. Building Code & Room Code Input (Tenant only) */}
-                {!isOwner && (
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {/* Mã tòa nhà */}
-                    <div>
-                      <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
-                        <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Mã tòa *</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="MC892"
-                          maxLength={5}
-                          value={buildingCode}
-                          onChange={(e) => setBuildingCode(e.target.value.toUpperCase())}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    {/* Mã phòng trọ */}
-                    <div>
-                      <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
-                        <Key className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Mã phòng *</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="P101A"
-                          maxLength={5}
-                          value={roomCode}
-                          onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. Password Input */}
-                <div>
-                  <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
-                    Mật khẩu
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                    <input
-                      type={obscurePassword ? 'password' : 'text'}
-                      placeholder="••••••••"
-                      value={form.password}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-10 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
-                        isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
-                      } transition-all`}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setObscurePassword(!obscurePassword)}
-                      title={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
-                      aria-label={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] p-1 rounded-md transition-colors cursor-pointer"
-                    >
-                      {obscurePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Error Banner */}
-                {errorMessage && (
-                  <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-[12px] font-medium flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
-
-                {/* Submit Button with Morphing Animation & Success State */}
+              {/* Segmented Tab Switcher: Đăng nhập vs Đăng ký bằng SĐT */}
+              <div className="flex bg-[#F1F5F9] p-1 rounded-xl border border-slate-200/70">
                 <button
-                  type="submit"
-                  disabled={loading || isSuccess}
-                  className={`w-full h-12 rounded-[14px] text-white font-extrabold text-[14.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-lg active:scale-[0.97] mt-2 ${
-                    isSuccess
-                      ? 'bg-gradient-to-r from-[#10B981] to-[#059669] shadow-emerald-500/30'
-                      : isOwner
-                      ? 'bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-blue-500/25'
-                      : 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] shadow-amber-500/25'
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('LOGIN');
+                    setErrorMessage(null);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    authMode === 'LOGIN'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  {isSuccess ? (
-                    <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
-                      <div className="w-5 h-5 rounded-full bg-white text-[#059669] flex items-center justify-center">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </div>
-                      <span>Đăng nhập thành công!</span>
-                    </div>
-                  ) : loading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Đang xác thực...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span>Đăng nhập vào hệ thống</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
-                  )}
+                  <span>Đăng nhập</span>
                 </button>
 
-                {/* Social Login Divider */}
-                <div className="relative flex py-2 items-center">
-                  <div className="flex-grow border-t border-slate-200"></div>
-                  <span className="flex-shrink mx-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Hoặc tiếp tục với
-                  </span>
-                  <div className="flex-grow border-t border-slate-200"></div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('REGISTER');
+                    setErrorMessage(null);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    authMode === 'REGISTER'
+                      ? isOwner
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-amber-600 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Đăng ký bằng SĐT</span>
+                </button>
+              </div>
 
-                {/* Social Login Buttons (Google & Facebook) */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  {/* Google Login Button */}
+              {/* ─── TAB 1: FORM ĐĂNG NHẬP ─── */}
+              {authMode === 'LOGIN' ? (
+                <form onSubmit={handleLogin} className="space-y-3.5 pt-1">
+                  {/* Phone Input */}
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
+                      Số điện thoại đăng nhập
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <input
+                        type="tel"
+                        placeholder="0388430402"
+                        value={form.phone}
+                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                        } transition-all`}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Building Code & Room Code Input (Tenant only) */}
+                  {!isOwner && (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Mã tòa *</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="MC892"
+                            maxLength={5}
+                            value={buildingCode}
+                            onChange={(e) => setBuildingCode(e.target.value.toUpperCase())}
+                            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
+                          <Key className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Mã phòng *</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="P101A"
+                            maxLength={5}
+                            value={roomCode}
+                            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Password Input */}
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
+                      Mật khẩu
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <input
+                        type={obscurePassword ? 'password' : 'text'}
+                        placeholder="••••••••"
+                        value={form.password}
+                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-10 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                        } transition-all`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setObscurePassword(!obscurePassword)}
+                        title={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
+                        aria-label={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] p-1 rounded-md transition-colors cursor-pointer"
+                      >
+                        {obscurePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Error Banner */}
+                  {errorMessage && (
+                    <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-[12px] font-medium flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
                   <button
-                    type="button"
-                    onClick={handleGoogleLogin}
+                    type="submit"
                     disabled={loading || isSuccess}
-                    className="h-11 px-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-slate-700 shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                    className={`w-full h-12 rounded-[14px] text-white font-extrabold text-[14.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-lg active:scale-[0.97] mt-2 ${
+                      isSuccess
+                        ? 'bg-gradient-to-r from-[#10B981] to-[#059669] shadow-emerald-500/30'
+                        : isOwner
+                        ? 'bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-blue-500/25'
+                        : 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] shadow-amber-500/25'
+                    }`}
                   >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                      />
-                    </svg>
-                    <span>Google</span>
+                    {isSuccess ? (
+                      <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                        <div className="w-5 h-5 rounded-full bg-white text-[#059669] flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                        <span>Đăng nhập thành công!</span>
+                      </div>
+                    ) : loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Đang xác thực...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span>Đăng nhập vào hệ thống</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    )}
                   </button>
 
-                  {/* Facebook Login Button */}
+                  {/* Switch to Register link */}
+                  <div className="text-center pt-1">
+                    <p className="text-[12px] text-slate-500">
+                      Chưa có tài khoản?{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('REGISTER');
+                          setErrorMessage(null);
+                        }}
+                        className={`font-bold hover:underline cursor-pointer ${
+                          isOwner ? 'text-blue-600' : 'text-amber-600'
+                        }`}
+                      >
+                        Đăng ký bằng Số điện thoại
+                      </button>
+                    </p>
+                  </div>
+
+                  {/* Social Login Divider */}
+                  <div className="relative flex py-1.5 items-center">
+                    <div className="flex-grow border-t border-slate-200"></div>
+                    <span className="flex-shrink mx-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      Hoặc tiếp tục với
+                    </span>
+                    <div className="flex-grow border-t border-slate-200"></div>
+                  </div>
+
+                  {/* Social Login Buttons */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      disabled={loading || isSuccess}
+                      className="h-11 px-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-slate-700 shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                      <span>Google</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleFacebookLogin}
+                      disabled={loading || isSuccess}
+                      className="h-11 px-3 bg-[#1877F2]/5 hover:bg-[#1877F2]/10 border border-[#1877F2]/20 hover:border-[#1877F2]/40 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-[#1877F2] shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 fill-[#1877F2]" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                      </svg>
+                      <span>Facebook</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* ─── TAB 2: FORM ĐĂNG KÝ BẰNG SỐ ĐIỆN THOẠI ─── */
+                <form onSubmit={handleRegister} className="space-y-3 pt-1">
+                  {/* Họ và tên */}
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                      Họ và tên <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <input
+                        type="text"
+                        placeholder="Nguyễn Văn A"
+                        value={registerForm.fullName}
+                        onChange={(e) =>
+                          setRegisterForm({ ...registerForm, fullName: e.target.value })
+                        }
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                        } transition-all`}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Số điện thoại */}
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                      Số điện thoại đăng ký <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <input
+                        type="tel"
+                        placeholder="0912345678"
+                        value={registerForm.phone}
+                        onChange={(e) =>
+                          setRegisterForm({ ...registerForm, phone: e.target.value })
+                        }
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                        } transition-all`}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mật khẩu */}
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                      Mật khẩu (tối thiểu 6 ký tự) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <input
+                        type={obscureRegPassword ? 'password' : 'text'}
+                        placeholder="••••••••"
+                        value={registerForm.password}
+                        onChange={(e) =>
+                          setRegisterForm({ ...registerForm, password: e.target.value })
+                        }
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-10 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                        } transition-all`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setObscureRegPassword(!obscureRegPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] p-1 rounded-md transition-colors cursor-pointer"
+                      >
+                        {obscureRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Xác nhận Mật khẩu */}
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                      Xác nhận mật khẩu <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <input
+                        type={obscureConfirmPassword ? 'password' : 'text'}
+                        placeholder="••••••••"
+                        value={registerForm.confirmPassword}
+                        onChange={(e) =>
+                          setRegisterForm({ ...registerForm, confirmPassword: e.target.value })
+                        }
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-10 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                        } transition-all`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setObscureConfirmPassword(!obscureConfirmPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] p-1 rounded-md transition-colors cursor-pointer"
+                      >
+                        {obscureConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Error Banner */}
+                  {errorMessage && (
+                    <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-[12px] font-medium flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+
+                  {/* Register Submit Button */}
                   <button
-                    type="button"
-                    onClick={handleFacebookLogin}
+                    type="submit"
                     disabled={loading || isSuccess}
-                    className="h-11 px-3 bg-[#1877F2]/5 hover:bg-[#1877F2]/10 border border-[#1877F2]/20 hover:border-[#1877F2]/40 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-[#1877F2] shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                    className={`w-full h-12 rounded-[14px] text-white font-extrabold text-[14.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-lg active:scale-[0.97] mt-3 ${
+                      isSuccess
+                        ? 'bg-gradient-to-r from-[#10B981] to-[#059669] shadow-emerald-500/30'
+                        : isOwner
+                        ? 'bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-blue-500/25'
+                        : 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] shadow-amber-500/25'
+                    }`}
                   >
-                    <svg className="w-4 h-4 fill-[#1877F2]" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                    </svg>
-                    <span>Facebook</span>
+                    {isSuccess ? (
+                      <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                        <div className="w-5 h-5 rounded-full bg-white text-[#059669] flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                        <span>Đăng ký thành công!</span>
+                      </div>
+                    ) : loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Đang tạo tài khoản...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <UserPlus className="w-4 h-4" />
+                        <span>Đăng ký tài khoản ngay</span>
+                      </div>
+                    )}
                   </button>
-                </div>
-              </form>
+
+                  {/* Switch to Login link */}
+                  <div className="text-center pt-1">
+                    <p className="text-[12px] text-slate-500">
+                      Đã có tài khoản?{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('LOGIN');
+                          setErrorMessage(null);
+                        }}
+                        className={`font-bold hover:underline cursor-pointer ${
+                          isOwner ? 'text-blue-600' : 'text-amber-600'
+                        }`}
+                      >
+                        Đăng nhập ngay
+                      </button>
+                    </p>
+                  </div>
+                </form>
+              )}
             </div>
           )}
         </div>
@@ -696,3 +986,12 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC]" />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
