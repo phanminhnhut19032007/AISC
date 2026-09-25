@@ -129,7 +129,14 @@ export const authApi = {
     }),
   googleLogin: (idToken: string, role?: string) =>
     api.post<TokenResponse>('/auth/google', { id_token: idToken, role }),
-  register: (data: { full_name: string; phone: string; password: string; role: string }) =>
+  sendOtp: (phone: string, purpose?: string) =>
+    api.post<{ success: boolean; message: string; otp_demo?: string; expires_in?: number }>('/auth/send-otp', {
+      phone,
+      purpose: purpose || 'REGISTER',
+    }),
+  verifyOtp: (phone: string, otp_code: string) =>
+    api.post<{ success: boolean; message: string }>('/auth/verify-otp', { phone, otp_code }),
+  register: (data: { full_name: string; phone: string; password: string; role: string; otp_code?: string }) =>
     api.post<TokenResponse>('/auth/register', data),
   me: () => api.get<User>('/auth/me'),
   updateMe: (data: { full_name?: string; phone?: string; email?: string; password?: string }) =>

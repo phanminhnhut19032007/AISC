@@ -6,12 +6,23 @@ from app.models.user import UserRole
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
 
+class SendOTPRequest(BaseModel):
+    phone: str
+    purpose: Optional[str] = "REGISTER"
+
+
+class VerifyOTPRequest(BaseModel):
+    phone: str
+    otp_code: str
+
+
 class RegisterRequest(BaseModel):
     full_name: str
     phone: str
     password: str
     email: Optional[EmailStr] = None
     role: UserRole = UserRole.TENANT
+    otp_code: Optional[str] = None
 
     @field_validator("phone")
     @classmethod
