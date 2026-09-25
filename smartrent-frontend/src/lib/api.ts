@@ -54,6 +54,7 @@ export interface TokenResponse {
 export interface Building {
   id: string;
   name: string;
+  building_code?: string;
   address: string;
   owner_id: string;
   province?: string;
@@ -64,6 +65,7 @@ export interface Room {
   id: string;
   building_id: string;
   room_number: string;
+  room_code?: string;
   base_rent: number;
   electricity_rate: number;
   water_rate: number;
@@ -117,8 +119,14 @@ export interface ChatMessage {
 
 // ---- Auth API ----
 export const authApi = {
-  login: (phone: string, password: string, role?: string) =>
-    api.post<TokenResponse>('/auth/login', { phone, password, ...(role ? { role } : {}) }),
+  login: (phone: string, password: string, role?: string, building_code?: string, room_code?: string) =>
+    api.post<TokenResponse>('/auth/login', {
+      phone,
+      password,
+      ...(role ? { role } : {}),
+      ...(building_code ? { building_code } : {}),
+      ...(room_code ? { room_code } : {}),
+    }),
   googleLogin: (idToken: string, role?: string) =>
     api.post<TokenResponse>('/auth/google', { id_token: idToken, role }),
   register: (data: { full_name: string; phone: string; password: string; role: string }) =>

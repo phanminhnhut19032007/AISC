@@ -18,6 +18,7 @@ class Building(UUIDBase):
 
     owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    building_code: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, index=True)
     address: Mapped[str] = mapped_column(String(512), nullable=False)
     province: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     total_floors: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -30,7 +31,7 @@ class Building(UUIDBase):
     rooms: Mapped[List["Room"]] = relationship("Room", back_populates="building", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
-        return f"<Building id={self.id} name={self.name}>"
+        return f"<Building id={self.id} name={self.name} code={self.building_code}>"
 
 
 class Room(UUIDBase):
@@ -38,6 +39,7 @@ class Room(UUIDBase):
 
     building_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("buildings.id"), nullable=False, index=True)
     room_number: Mapped[str] = mapped_column(String(20), nullable=False)
+    room_code: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, index=True)
     floor: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     area_sqm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     base_rent: Mapped[float] = mapped_column(Float, nullable=False)

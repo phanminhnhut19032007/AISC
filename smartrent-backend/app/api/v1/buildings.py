@@ -16,12 +16,29 @@ from app.schemas.building import (
 router = APIRouter(tags=["Buildings & Rooms"])
 
 
+import secrets
+import string
+
+def generate_5char_code(prefix: str = "") -> str:
+    chars = string.ascii_uppercase + string.digits
+    body_len = max(1, 5 - len(prefix))
+    code = prefix + "".join(secrets.choice(chars) for _ in range(body_len))
+    return code[:5].upper()
+
+
 # ─── Buildings ───────────────────────────────────────────────────────────────
 
 @router.post("/buildings", response_model=BuildingOut, status_code=201)
 async def create_building(body: BuildingCreate, db: DB, owner: OwnerOnly):
     """Tạo tòa nhà mới."""
-    building = Building(**body.model_dump(), owner_id=owner.id)
+    data = body.model_dump()
+    if not data.get("building_code"):
+        # Auto-generate 5-character building code
+        data["building_code"] = generate_5char_code()
+    else:
+        data["building_code"] = data["building_code"].upper()[:5]
+
+    building = Building(**data, owner_id=owner.id)
     db.add(building)
     await db.flush()
     return BuildingOut.model_validate(building)
@@ -56,7 +73,13 @@ async def list_buildings(
         return []
 
     result = await db.execute(stmt)
-    return [BuildingOut.model_validate(b) for b in result.scalars().all()]
+    buildings = result.scalars().all()
+    # Backfill missing building codes
+    for b in buildings:
+        if not b.building_code:
+            b.building_code = generate_5char_code()
+    await db.flush()
+    return [BuildingOut.model_validate(b) for b in buildings]
 
 
 
@@ -65,6 +88,9 @@ async def get_building(building_id: uuid.UUID, db: DB, current_user: CurrentUser
     building = await db.get(Building, building_id)
     if not building:
         raise HTTPException(404, "Không tìm thấy tòa nhà")
+    if not building.building_code:
+        building.building_code = generate_5char_code()
+        await db.flush()
     return BuildingOut.model_validate(building)
 
 
@@ -74,6 +100,8 @@ async def update_building(building_id: uuid.UUID, body: BuildingUpdate, db: DB, 
     if not building or building.owner_id != owner.id:
         raise HTTPException(404, "Không tìm thấy tòa nhà")
     for k, v in body.model_dump(exclude_none=True).items():
+        if k == "building_code" and v:
+            v = v.upper()[:5]
         setattr(building, k, v)
     return BuildingOut.model_validate(building)
 
@@ -83,7 +111,14 @@ async def update_building(building_id: uuid.UUID, body: BuildingUpdate, db: DB, 
 @router.post("/rooms", response_model=RoomOut, status_code=201)
 async def create_room(body: RoomCreate, db: DB, owner: OwnerOnly):
     """Thêm phòng mới vào tòa nhà."""
-    room = Room(**body.model_dump())
+    data = body.model_dump()
+    if not data.get("room_code"):
+        pfx = f"P{data['room_number']}" if len(data.get("room_number", "")) <= 4 else "P"
+        data["room_code"] = generate_5char_code(prefix=pfx)
+    else:
+        data["room_code"] = data["room_code"].upper()[:5]
+
+    room = Room(**data)
     db.add(room)
     await db.flush()
     return RoomOut.model_validate(room)
@@ -94,7 +129,14 @@ async def list_rooms(building_id: uuid.UUID, db: DB, current_user: CurrentUser):
     """Danh sách phòng của một tòa nhà."""
     stmt = select(Room).where(Room.building_id == building_id)
     result = await db.execute(stmt)
-    return [RoomOut.model_validate(r) for r in result.scalars().all()]
+    rooms = result.scalars().all()
+    # Backfill missing room codes
+    for r in rooms:
+        if not r.room_code:
+            pfx = f"P{r.room_number}" if len(r.room_number) <= 4 else "P"
+            r.room_code = generate_5char_code(prefix=pfx)
+    await db.flush()
+    return [RoomOut.model_validate(r) for r in rooms]
 
 
 @router.get("/rooms/{room_id}", response_model=RoomOut)

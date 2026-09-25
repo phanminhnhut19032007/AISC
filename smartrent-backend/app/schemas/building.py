@@ -10,6 +10,7 @@ from app.models.building import RoomStatus
 class BuildingCreate(BaseModel):
     name: str
     address: str
+    building_code: Optional[str] = None
     province: Optional[str] = None
     total_floors: Optional[int] = None
     description: Optional[str] = None
@@ -18,6 +19,7 @@ class BuildingCreate(BaseModel):
 class BuildingUpdate(BaseModel):
     name: Optional[str] = None
     address: Optional[str] = None
+    building_code: Optional[str] = None
     province: Optional[str] = None
     total_floors: Optional[int] = None
     description: Optional[str] = None
@@ -29,6 +31,7 @@ class BuildingOut(BaseModel):
     id: uuid.UUID
     owner_id: uuid.UUID
     name: str
+    building_code: Optional[str] = None
     address: str
     province: Optional[str] = None
     total_floors: Optional[int] = None
@@ -42,6 +45,7 @@ class BuildingOut(BaseModel):
 class RoomCreate(BaseModel):
     building_id: uuid.UUID
     room_number: str
+    room_code: Optional[str] = None
     floor: Optional[int] = None
     area_sqm: Optional[float] = None
     base_rent: float
@@ -53,6 +57,7 @@ class RoomCreate(BaseModel):
 
 class RoomUpdate(BaseModel):
     room_number: Optional[str] = None
+    room_code: Optional[str] = None
     floor: Optional[int] = None
     area_sqm: Optional[float] = None
     base_rent: Optional[float] = None
@@ -70,6 +75,7 @@ class RoomOut(BaseModel):
     id: uuid.UUID
     building_id: uuid.UUID
     room_number: str
+    room_code: Optional[str] = None
     floor: Optional[int] = None
     area_sqm: Optional[float] = None
     base_rent: float

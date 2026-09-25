@@ -7,14 +7,15 @@ import { saveAuth } from '@/lib/auth';
 import { 
   Phone, Lock, ArrowRight, ShieldCheck, Users, 
   ArrowLeft, Home as HomeIcon, Eye, EyeOff, Check, 
-  ChevronRight
+  ChevronRight, Building2, Key
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<'' | 'OWNER' | 'TENANT'>('');
   const [form, setForm] = useState({ phone: '', password: '' });
-  const [roomCode, setRoomCode] = useState('101');
+  const [buildingCode, setBuildingCode] = useState('MC892');
+  const [roomCode, setRoomCode] = useState('P101A');
   const [obscurePassword, setObscurePassword] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -199,7 +200,8 @@ export default function LoginPage() {
     setErrorMessage(null);
     setForm({ phone: '', password: '' });
     if (role === 'TENANT') {
-      setRoomCode('101');
+      setBuildingCode('MC892');
+      setRoomCode('P101A');
     }
   };
 
@@ -207,23 +209,36 @@ export default function LoginPage() {
     e.preventDefault();
     const phone = form.phone.trim();
     const password = form.password.trim();
-    const room = roomCode.trim();
+    const bCode = buildingCode.trim().toUpperCase();
+    const rCode = roomCode.trim().toUpperCase();
 
     if (!phone || !password) {
       setErrorMessage('Vui lòng nhập đầy đủ số điện thoại và mật khẩu.');
       return;
     }
 
-    if (selectedRole === 'TENANT' && !room) {
-      setErrorMessage('Vui lòng nhập Mã trọ / Mã phòng trọ của bạn.');
-      return;
+    if (selectedRole === 'TENANT') {
+      if (!bCode) {
+        setErrorMessage('Vui lòng nhập Mã tòa nhà (5 ký tự).');
+        return;
+      }
+      if (!rCode) {
+        setErrorMessage('Vui lòng nhập Mã phòng trọ (5 ký tự).');
+        return;
+      }
     }
 
     setLoading(true);
     setErrorMessage(null);
 
     try {
-      const res = await authApi.login(phone, password, selectedRole || undefined);
+      const res = await authApi.login(
+        phone,
+        password,
+        selectedRole || undefined,
+        selectedRole === 'TENANT' ? bCode : undefined,
+        selectedRole === 'TENANT' ? rCode : undefined
+      );
 
       if (res.data.role !== selectedRole) {
         setErrorMessage(
@@ -242,7 +257,8 @@ export default function LoginPage() {
       });
 
       if (selectedRole === 'TENANT') {
-        localStorage.setItem('demo_tenant_room_code', room);
+        localStorage.setItem('demo_tenant_room_code', rCode);
+        localStorage.setItem('demo_tenant_building_code', bCode);
       }
 
       // Success animation trigger
@@ -268,7 +284,8 @@ export default function LoginPage() {
         saveAuth('mock_jwt_token_0388430402', fallbackUser);
 
         if (selectedRole === 'TENANT') {
-          localStorage.setItem('demo_tenant_room_code', room);
+          localStorage.setItem('demo_tenant_room_code', rCode || 'P101A');
+          localStorage.setItem('demo_tenant_building_code', bCode || 'MC892');
         }
 
         setIsSuccess(true);
@@ -502,22 +519,45 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* 2. Room Code Input (Tenant only) */}
+                {/* 2. Building Code & Room Code Input (Tenant only) */}
                 {!isOwner && (
-                  <div>
-                    <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
-                      Mã phòng trọ của bạn
-                    </label>
-                    <div className="relative">
-                      <HomeIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                      <input
-                        type="text"
-                        placeholder="Ví dụ: 101, 202, 301..."
-                        value={roomCode}
-                        onChange={(e) => setRoomCode(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all"
-                        required
-                      />
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Mã tòa nhà */}
+                    <div>
+                      <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
+                        <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Mã tòa *</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="MC892"
+                          maxLength={5}
+                          value={buildingCode}
+                          onChange={(e) => setBuildingCode(e.target.value.toUpperCase())}
+                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Mã phòng trọ */}
+                    <div>
+                      <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
+                        <Key className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Mã phòng *</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="P101A"
+                          maxLength={5}
+                          value={roomCode}
+                          onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

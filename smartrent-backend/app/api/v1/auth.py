@@ -69,6 +69,28 @@ async def login(body: LoginRequest, db: DB):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
 
+    # Validate building code and room code for tenant if supplied
+    if user.role == UserRole.TENANT and (body.building_code or body.room_code):
+        from app.models.building import Building, Room
+        if body.building_code:
+            b_code = body.building_code.strip().upper()
+            b_res = await db.execute(select(Building).where(Building.building_code == b_code, Building.is_deleted == False))
+            building = b_res.scalar_one_or_none()
+            if not building:
+                raise HTTPException(status_code=400, detail="Mã tòa nhà không chính xác hoặc không tồn tại")
+
+            if body.room_code:
+                r_code = body.room_code.strip().upper()
+                r_res = await db.execute(
+                    select(Room).where(
+                        Room.building_id == building.id,
+                        (Room.room_code == r_code) | (Room.room_number == body.room_code.strip())
+                    )
+                )
+                room = r_res.scalar_one_or_none()
+                if not room:
+                    raise HTTPException(status_code=400, detail=f"Mã phòng '{body.room_code}' không tồn tại trong tòa {building.name}")
+
     token = create_access_token(str(user.id))
     return TokenResponse(
         access_token=token,

@@ -26,6 +26,8 @@ class LoginRequest(BaseModel):
     phone: str
     password: str
     role: Optional[UserRole] = None
+    building_code: Optional[str] = None
+    room_code: Optional[str] = None
 
 
 class GoogleLoginRequest(BaseModel):

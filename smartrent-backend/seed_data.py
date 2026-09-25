@@ -64,6 +64,7 @@ async def seed(reset: bool = False):
         building = Building(
             owner_id=owner.id,
             name="Nha Tro Minh Chau",
+            building_code="MC892",
             address="45 Duong D1, P. Binh Thanh, TP.HCM",
             province="Ho Chi Minh",
             total_floors=4,
@@ -73,20 +74,21 @@ async def seed(reset: bool = False):
 
         # ── Rooms ────────────────────────────────────────────────────────────
         rooms_data = [
-            ("101", 1, 3_000_000, RoomStatus.OCCUPIED),
-            ("102", 1, 3_200_000, RoomStatus.OCCUPIED),
-            ("103", 1, 2_800_000, RoomStatus.AVAILABLE),
-            ("201", 2, 3_500_000, RoomStatus.OCCUPIED),
-            ("202", 2, 3_500_000, RoomStatus.OCCUPIED),
-            ("203", 2, 3_000_000, RoomStatus.MAINTENANCE),
-            ("301", 3, 4_000_000, RoomStatus.OCCUPIED),
-            ("302", 3, 3_800_000, RoomStatus.AVAILABLE),
+            ("101", "P101A", 1, 3_000_000, RoomStatus.OCCUPIED),
+            ("102", "P102B", 1, 3_200_000, RoomStatus.OCCUPIED),
+            ("103", "P103C", 1, 2_800_000, RoomStatus.AVAILABLE),
+            ("201", "P201A", 2, 3_500_000, RoomStatus.OCCUPIED),
+            ("202", "P202B", 2, 3_500_000, RoomStatus.OCCUPIED),
+            ("203", "P203C", 2, 3_000_000, RoomStatus.MAINTENANCE),
+            ("301", "P301A", 3, 4_000_000, RoomStatus.OCCUPIED),
+            ("302", "P302B", 3, 3_800_000, RoomStatus.AVAILABLE),
         ]
         rooms = []
-        for number, floor, rent, status in rooms_data:
+        for number, r_code, floor, rent, status in rooms_data:
             r = Room(
                 building_id=building.id,
                 room_number=number,
+                room_code=r_code,
                 floor=floor,
                 base_rent=rent,
                 electricity_rate=4000,

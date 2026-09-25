@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Header from '@/components/layout/Header';
 import { buildingsApi, roomsApi, Building, Room } from '@/lib/api';
-import { Building2, MapPin, Plus, DoorOpen, Zap, Droplets, Info, X, Trash2, Edit3, Save } from 'lucide-react';
+import { Building2, MapPin, Plus, DoorOpen, Zap, Droplets, Info, X, Trash2, Edit3, Save, Copy, Key } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -285,14 +285,30 @@ export default function BuildingsPage() {
               return (
                 <div key={b.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
                   {/* Tiêu đề tòa nhà */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4">
+                  <div className="flex items-start justify-between flex-wrap gap-4">
+                    <div className="flex gap-4 items-start">
                       <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
                         <Building2 className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-800 text-lg">{b.name}</h3>
-                        <p className="text-sm text-slate-500 flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <h3 className="font-extrabold text-slate-800 text-lg">{b.name}</h3>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const code = b.building_code || 'MC892';
+                              navigator.clipboard.writeText(code);
+                              toast.success(`Đã sao chép mã tòa: ${code}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-mono font-extrabold cursor-pointer transition-all shadow-sm group"
+                            title="Bấm để sao chép mã tòa nhà"
+                          >
+                            <Key className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Mã tòa: {b.building_code || 'MC892'}</span>
+                            <Copy className="w-3 h-3 text-blue-500 group-hover:scale-110 transition-transform ml-0.5" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
                           <MapPin className="w-3.5 h-3.5" />{b.address}
                         </p>
                       </div>
@@ -346,9 +362,10 @@ export default function BuildingsPage() {
                   {/* Rooms List Grid */}
                   <div>
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">Danh sách phòng ({bRooms.length})</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
                       {bRooms.map((r) => {
                         const sc = STATUS_CONFIG[r.status] || { label: r.status, bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-100' };
+                        const roomCodeDisplay = r.room_code || `P${r.room_number}`;
                         return (
                           <div
                             key={r.id}
@@ -364,15 +381,36 @@ export default function BuildingsPage() {
                               setEditRoomMode(false); // ban đầu xem chi tiết trước
                               setShowRoomDetail(true);
                             }}
-                            className={`flex items-center justify-between p-3 rounded-xl border-2 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer transition-all active:scale-95 ${sc.bg} ${sc.border}`}
+                            className={`p-3 rounded-xl border-2 hover:-translate-y-0.5 hover:shadow-md cursor-pointer transition-all active:scale-95 ${sc.bg} ${sc.border}`}
                           >
-                            <div className="flex items-center gap-2">
-                              <DoorOpen className={`w-4 h-4 ${sc.text}`} />
-                              <span className={`font-bold text-sm ${sc.text}`}>#{r.room_number}</span>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <DoorOpen className={`w-4 h-4 ${sc.text}`} />
+                                <span className={`font-extrabold text-sm ${sc.text}`}>#{r.room_number}</span>
+                              </div>
+                              <span className="text-[10px] opacity-80 font-bold font-mono">
+                                {r.status === 'OCCUPIED' ? 'Đã thuê' : r.status === 'AVAILABLE' ? 'Trống' : 'Bảo trì'}
+                              </span>
                             </div>
-                            <span className="text-[10px] opacity-70 font-medium font-mono">
-                              {r.status === 'OCCUPIED' ? 'Đã thuê' : r.status === 'AVAILABLE' ? 'Trống' : 'Bảo trì'}
-                            </span>
+
+                            {/* Mã phòng 5 ký tự */}
+                            <div className="mt-2 pt-1.5 border-t border-black/5 flex items-center justify-between">
+                              <span className="text-[11px] font-mono font-extrabold text-slate-700 bg-white/80 px-1.5 py-0.5 rounded border border-black/5">
+                                Mã: {roomCodeDisplay}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(roomCodeDisplay);
+                                  toast.success(`Đã sao chép mã phòng: ${roomCodeDisplay}`);
+                                }}
+                                className="p-1 hover:bg-black/10 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                                title="Sao chép mã phòng"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
@@ -670,7 +708,7 @@ export default function BuildingsPage() {
                 /* CHẾ ĐỘ XEM CHI TIẾT */
                 <div className="space-y-5">
                   {/* Trạng thái phòng */}
-                  <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <span className="text-sm font-medium text-slate-500">Trạng thái phòng:</span>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                       selectedRoom.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
@@ -681,6 +719,27 @@ export default function BuildingsPage() {
                       : selectedRoom.status === 'OCCUPIED' ? 'Đã cho thuê'
                       : 'Đang bảo trì'}
                     </span>
+                  </div>
+
+                  {/* Mã phòng 5 ký tự để đăng nhập */}
+                  <div className="flex justify-between items-center bg-blue-50/70 p-3 rounded-xl border border-blue-100">
+                    <div>
+                      <p className="text-xs font-bold text-blue-950">Mã phòng đăng nhập</p>
+                      <p className="text-[11px] text-blue-600/80">Cung cấp cho người thuê khi đăng nhập</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const code = selectedRoom.room_code || `P${selectedRoom.room_number}`;
+                        navigator.clipboard.writeText(code);
+                        toast.success(`Đã sao chép mã phòng: ${code}`);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-blue-200 text-xs font-mono font-extrabold text-blue-700 hover:bg-blue-50 transition-colors shadow-sm cursor-pointer active:scale-95"
+                    >
+                      <Key className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{selectedRoom.room_code || `P${selectedRoom.room_number}`}</span>
+                      <Copy className="w-3 h-3 text-blue-500" />
+                    </button>
                   </div>
 
                   {/* Chi tiết biểu phí */}
