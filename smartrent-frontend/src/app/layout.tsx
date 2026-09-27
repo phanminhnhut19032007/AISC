@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
   title: 'REASY - Quản lý trọ thông minh',
@@ -18,13 +17,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="vi">
       <body className="antialiased overflow-x-hidden">
         {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: { borderRadius: '10px', background: '#1e293b', color: '#fff' },
-          }}
-        />
       </body>
     </html>
   );
