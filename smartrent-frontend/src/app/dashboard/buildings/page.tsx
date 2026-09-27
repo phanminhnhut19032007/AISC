@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Header from '@/components/layout/Header';
 import { buildingsApi, roomsApi, Building, Room } from '@/lib/api';
 import { Building2, MapPin, Plus, DoorOpen, Zap, Droplets, Info, X, Trash2, Edit3, Save, Copy, Key } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
   AVAILABLE: { label: 'Còn trống', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
@@ -12,6 +12,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; b
 };
 
 export default function BuildingsPage() {
+  const { confirm, showAlert } = useConfirm();
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [roomsMap, setRoomsMap] = useState<Record<string, Room[]>>({});
   const [loading, setLoading] = useState(true);
@@ -76,8 +77,22 @@ export default function BuildingsPage() {
   useEffect(() => { load(showDeleted); }, [showDeleted]);
 
   const handleAddBuilding = async () => {
-    if (!form.name || !form.address) return toast.error('Vui lòng nhập đầy đủ thông tin Tên và Địa chỉ tòa nhà');
-    if (form.rooms_count <= 0) return toast.error('Số lượng phòng cần lớn hơn 0');
+    if (!form.name || !form.address) {
+      showAlert({
+        title: 'Thiếu thông tin',
+        message: 'Vui lòng nhập đầy đủ thông tin Tên và Địa chỉ tòa nhà',
+        type: 'warning',
+      });
+      return;
+    }
+    if (form.rooms_count <= 0) {
+      showAlert({
+        title: 'Số lượng phòng không hợp lệ',
+        message: 'Số lượng phòng cần lớn hơn 0',
+        type: 'warning',
+      });
+      return;
+    }
     
     setSaving(true);
     try {
@@ -111,7 +126,11 @@ export default function BuildingsPage() {
       }
       await Promise.all(roomPromises);
       
-      toast.success(`Tạo tòa nhà thành công và tự động khởi tạo ${form.rooms_count} phòng trọ!`);
+      showAlert({
+        title: 'Tạo tòa nhà thành công',
+        message: `Đã tạo tòa nhà thành công và tự động khởi tạo ${form.rooms_count} phòng trọ!`,
+        type: 'success',
+      });
       setShowAdd(false);
       setForm({
         name: '',
@@ -123,7 +142,11 @@ export default function BuildingsPage() {
       });
       await load(showDeleted);
     } catch {
-      toast.error('Lỗi khi tạo tòa nhà hoặc phòng trọ');
+      showAlert({
+        title: 'Thao tác thất bại',
+        message: 'Lỗi khi tạo tòa nhà hoặc phòng trọ. Vui lòng kiểm tra lại.',
+        type: 'danger',
+      });
     } finally {
       setSaving(false);
     }
@@ -133,37 +156,74 @@ export default function BuildingsPage() {
   const handleDeleteBuilding = async () => {
     if (!buildingToDelete) return;
     if (deleteConfirmText.trim().toUpperCase() !== 'Y') {
-      return toast.error('Vui lòng nhập chính xác chữ "Y" để xác nhận');
+      showAlert({
+        title: 'Xác nhận không hợp lệ',
+        message: 'Vui lòng nhập chính xác chữ "Y" để xác nhận xóa tòa nhà.',
+        type: 'warning',
+      });
+      return;
     }
 
     setDeletingBuilding(true);
     try {
       await buildingsApi.delete(buildingToDelete.id);
-      toast.success(`Đã chuyển tòa nhà "${buildingToDelete.name}" vào thùng rác!`);
+      showAlert({
+        title: 'Đã xóa tòa nhà',
+        message: `Đã chuyển tòa nhà "${buildingToDelete.name}" vào thùng rác!`,
+        type: 'success',
+      });
       setBuildingToDelete(null);
       setDeleteConfirmText('');
       await load(showDeleted);
     } catch {
-      toast.error('Lỗi khi xóa tòa nhà');
+      showAlert({
+        title: 'Lỗi xóa tòa nhà',
+        message: 'Không thể xóa tòa nhà lúc này. Vui lòng thử lại.',
+        type: 'danger',
+      });
     } finally {
       setDeletingBuilding(false);
     }
   };
 
   const handleRestoreBuilding = async (id: string) => {
-    try {
-      await buildingsApi.restore(id);
-      toast.success('Khôi phục tòa nhà thành công!');
-      await load(showDeleted);
-    } catch {
-      toast.error('Lỗi khi khôi phục tòa nhà');
-    }
+    confirm({
+      title: 'Khôi phục tòa nhà',
+      message: 'Bạn có muốn khôi phục tòa nhà này và toàn bộ danh sách phòng về danh sách hoạt động không?',
+      confirmText: 'Khôi phục ngay',
+      cancelText: 'Hủy',
+      type: 'info',
+      onConfirm: async () => {
+        try {
+          await buildingsApi.restore(id);
+          showAlert({
+            title: 'Khôi phục thành công',
+            message: 'Tòa nhà đã được khôi phục về trạng thái hoạt động!',
+            type: 'success',
+          });
+          await load(showDeleted);
+        } catch {
+          showAlert({
+            title: 'Lỗi khôi phục',
+            message: 'Không thể khôi phục tòa nhà lúc này.',
+            type: 'danger',
+          });
+        }
+      },
+    });
   };
 
   // Thêm phòng lẻ
   const handleAddRoom = async () => {
     if (!buildingToAddRoom) return;
-    if (!roomForm.room_number.trim()) return toast.error('Vui lòng điền số phòng');
+    if (!roomForm.room_number.trim()) {
+      showAlert({
+        title: 'Thiếu số phòng',
+        message: 'Vui lòng điền số phòng cần tạo.',
+        type: 'warning',
+      });
+      return;
+    }
 
     setSavingRoom(true);
     try {
@@ -174,7 +234,11 @@ export default function BuildingsPage() {
         electricity_rate: roomForm.electricity_rate,
         water_rate: roomForm.water_rate
       });
-      toast.success(`Đã thêm phòng ${roomForm.room_number} thành công!`);
+      showAlert({
+        title: 'Thêm phòng thành công',
+        message: `Đã thêm phòng ${roomForm.room_number} vào tòa nhà!`,
+        type: 'success',
+      });
       setBuildingToAddRoom(null);
       setRoomForm({
         room_number: '',
@@ -185,7 +249,11 @@ export default function BuildingsPage() {
       });
       await load(showDeleted);
     } catch {
-      toast.error('Lỗi khi thêm phòng');
+      showAlert({
+        title: 'Lỗi thêm phòng',
+        message: 'Không thể thêm phòng mới. Vui lòng kiểm tra lại.',
+        type: 'danger',
+      });
     } finally {
       setSavingRoom(false);
     }
@@ -203,12 +271,20 @@ export default function BuildingsPage() {
         status: editRoomForm.status,
         floor: editRoomForm.floor
       });
-      toast.success(`Đã cập nhật phòng #${res.data.room_number} thành công!`);
+      showAlert({
+        title: 'Cập nhật thành công',
+        message: `Đã cập nhật thông tin phòng #${res.data.room_number}!`,
+        type: 'success',
+      });
       setShowRoomDetail(false);
       setEditRoomMode(false);
       await load(showDeleted);
     } catch {
-      toast.error('Lỗi khi cập nhật phòng');
+      showAlert({
+        title: 'Lỗi cập nhật',
+        message: 'Không thể cập nhật phòng lúc này.',
+        type: 'danger',
+      });
     } finally {
       setUpdatingRoom(false);
     }
@@ -217,20 +293,35 @@ export default function BuildingsPage() {
   // Xóa một phòng cụ thể
   const handleDeleteRoom = async () => {
     if (!selectedRoom) return;
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn phòng #${selectedRoom.room_number} không?`)) return;
-
-    setDeletingRoom(true);
-    try {
-      await roomsApi.delete(selectedRoom.id);
-      toast.success(`Đã xóa phòng #${selectedRoom.room_number} thành công!`);
-      setShowRoomDetail(false);
-      setEditRoomMode(false);
-      await load(showDeleted);
-    } catch {
-      toast.error('Lỗi khi xóa phòng');
-    } finally {
-      setDeletingRoom(false);
-    }
+    confirm({
+      title: 'Xác nhận xóa phòng',
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn phòng #${selectedRoom.room_number} không? Thao tác này không thể hoàn tác.`,
+      confirmText: 'Xóa vĩnh viễn',
+      cancelText: 'Hủy bỏ',
+      type: 'danger',
+      onConfirm: async () => {
+        setDeletingRoom(true);
+        try {
+          await roomsApi.delete(selectedRoom.id);
+          showAlert({
+            title: 'Đã xóa phòng',
+            message: `Đã xóa phòng #${selectedRoom.room_number} thành công!`,
+            type: 'success',
+          });
+          setShowRoomDetail(false);
+          setEditRoomMode(false);
+          await load(showDeleted);
+        } catch {
+          showAlert({
+            title: 'Lỗi xóa phòng',
+            message: 'Không thể xóa phòng này.',
+            type: 'danger',
+          });
+        } finally {
+          setDeletingRoom(false);
+        }
+      },
+    });
   };
 
   const fm = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' VND';
@@ -298,7 +389,11 @@ export default function BuildingsPage() {
                             onClick={() => {
                               const code = b.building_code || 'MC892';
                               navigator.clipboard.writeText(code);
-                              toast.success(`Đã sao chép mã tòa: ${code}`);
+                              showAlert({
+                                title: 'Đã sao chép',
+                                message: `Đã sao chép mã tòa nhà: ${code}`,
+                                type: 'success',
+                              });
                             }}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-mono font-extrabold cursor-pointer transition-all shadow-sm group"
                             title="Bấm để sao chép mã tòa nhà"
@@ -403,7 +498,11 @@ export default function BuildingsPage() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigator.clipboard.writeText(roomCodeDisplay);
-                                  toast.success(`Đã sao chép mã phòng: ${roomCodeDisplay}`);
+                                  showAlert({
+                                    title: 'Đã sao chép',
+                                    message: `Đã sao chép mã phòng: ${roomCodeDisplay}`,
+                                    type: 'success',
+                                  });
                                 }}
                                 className="p-1 hover:bg-black/10 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                                 title="Sao chép mã phòng"
@@ -732,7 +831,11 @@ export default function BuildingsPage() {
                       onClick={() => {
                         const code = selectedRoom.room_code || `P${selectedRoom.room_number}`;
                         navigator.clipboard.writeText(code);
-                        toast.success(`Đã sao chép mã phòng: ${code}`);
+                        showAlert({
+                          title: 'Đã sao chép',
+                          message: `Đã sao chép mã phòng: ${code}`,
+                          type: 'success',
+                        });
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-blue-200 text-xs font-mono font-extrabold text-blue-700 hover:bg-blue-50 transition-colors shadow-sm cursor-pointer active:scale-95"
                     >

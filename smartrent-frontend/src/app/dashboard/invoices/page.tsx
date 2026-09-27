@@ -3,8 +3,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import Header from '@/components/layout/Header';
 import { invoicesApi, buildingsApi, meterReadingsApi, Invoice, Room, Building } from '@/lib/api';
 import { Plus, QrCode, CheckCircle, RefreshCw, X, Zap, Droplets, Camera, Clock, DollarSign, Home as HomeIcon, ShieldCheck, AlertCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { getUser } from '@/lib/auth';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 const STATUS_BADGE: Record<string, string> = {
   PAID: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -33,6 +33,7 @@ const getErrorMessage = (err: any): string => {
 };
 
 export default function InvoicesPage() {
+  const { confirm, showAlert } = useConfirm();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -158,7 +159,7 @@ export default function InvoicesPage() {
       }
       setRooms(roomsAll);
     } catch (err: any) {
-      toast.error('Lỗi khi tải danh sách hóa đơn');
+      console.error('Lỗi khi tải danh sách hóa đơn:', err);
     } finally {
       setLoading(false);
     }
@@ -171,13 +172,16 @@ export default function InvoicesPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('Kích thước ảnh tối đa là 5MB');
+        showAlert({
+          title: 'Kích thước quá lớn',
+          message: 'Kích thước ảnh minh chứng tối đa là 5MB.',
+          type: 'warning',
+        });
         return;
       }
       const reader = new FileReader();
       reader.onload = (event) => {
         setElecProofPreview(event.target?.result as string);
-        toast.success('Đã tải ảnh minh chứng số điện');
       };
       reader.readAsDataURL(file);
     }
@@ -188,30 +192,50 @@ export default function InvoicesPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('Kích thước ảnh tối đa là 5MB');
+        showAlert({
+          title: 'Kích thước quá lớn',
+          message: 'Kích thước ảnh minh chứng tối đa là 5MB.',
+          type: 'warning',
+        });
         return;
       }
       const reader = new FileReader();
       reader.onload = (event) => {
         setWaterProofPreview(event.target?.result as string);
-        toast.success('Đã tải ảnh minh chứng số nước');
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleGenerate = async () => {
-    if (!genForm.room_id) return toast.error('Vui lòng chọn phòng trọ');
+    if (!genForm.room_id) {
+      showAlert({
+        title: 'Chưa chọn phòng',
+        message: 'Vui lòng chọn phòng trọ để tiếp tục tạo hóa đơn.',
+        type: 'warning',
+      });
+      return;
+    }
     
     const parsedElecNew = Number(elecNew);
     const parsedWaterNew = Number(waterNew);
 
     if (isNaN(parsedElecNew) || parsedElecNew < elecOld) {
-      return toast.error(`Chỉ số điện mới (${elecNew}) không được nhỏ hơn số cũ (${elecOld})`);
+      showAlert({
+        title: 'Chỉ số điện không hợp lệ',
+        message: `Chỉ số điện mới (${elecNew}) không được nhỏ hơn số cũ (${elecOld}).`,
+        type: 'warning',
+      });
+      return;
     }
 
     if (isNaN(parsedWaterNew) || parsedWaterNew < waterOld) {
-      return toast.error(`Chỉ số nước mới (${waterNew}) không được nhỏ hơn số cũ (${waterOld})`);
+      showAlert({
+        title: 'Chỉ số nước không hợp lệ',
+        message: `Chỉ số nước mới (${waterNew}) không được nhỏ hơn số cũ (${waterOld}).`,
+        type: 'warning',
+      });
+      return;
     }
 
     setGenerating(true);
@@ -242,48 +266,101 @@ export default function InvoicesPage() {
         year: Number(genForm.year)
       });
       
-      toast.success(`Đã lưu chỉ số & Tạo hóa đơn thành công cho ngày ${new Date(selectedDate).toLocaleDateString('vi-VN')}!`);
-      
       setShowGenModal(false);
       await load(showDeleted);
+
+      showAlert({
+        title: 'Tạo hóa đơn thành công',
+        message: `Đã lưu chỉ số & Tạo hóa đơn thành công cho ngày ${new Date(selectedDate).toLocaleDateString('vi-VN')}!`,
+        type: 'success',
+      });
     } catch (e: any) {
-      toast.error(getErrorMessage(e));
+      showAlert({
+        title: 'Lỗi tạo hóa đơn',
+        message: getErrorMessage(e),
+        type: 'danger',
+      });
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleMarkPaid = async (id: string) => {
-    try {
-      await invoicesApi.markPaid(id);
-      toast.success('Đã cập nhật trạng thái thu tiền mặt!');
-      await load(showDeleted);
-    } catch (e: any) {
-      toast.error(getErrorMessage(e));
-    }
+  const handleMarkPaid = (id: string, roomNumber?: string) => {
+    confirm({
+      title: 'Xác nhận thu tiền mặt',
+      message: `Bạn có chắc chắn muốn xác nhận đã thu đủ tiền mặt cho hóa đơn ${roomNumber ? 'phòng #' + roomNumber : 'này'}?`,
+      type: 'info',
+      confirmText: 'Xác nhận đã thu',
+      onConfirm: async () => {
+        try {
+          await invoicesApi.markPaid(id);
+          await load(showDeleted);
+          showAlert({
+            title: 'Thành công',
+            message: 'Đã cập nhật trạng thái thu tiền mặt!',
+            type: 'success',
+          });
+        } catch (e: any) {
+          showAlert({
+            title: 'Thất bại',
+            message: getErrorMessage(e),
+            type: 'danger',
+          });
+        }
+      },
+    });
   };
 
-  const handleDeleteInvoice = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn XÓA tạm thời hóa đơn này? Hóa đơn sẽ được đưa vào thùng rác.')) {
-      return;
-    }
-    try {
-      await invoicesApi.delete(id);
-      toast.success('Đã chuyển hóa đơn vào thùng rác!');
-      await load(showDeleted);
-    } catch (e: any) {
-      toast.error(getErrorMessage(e));
-    }
+  const handleDeleteInvoice = (id: string) => {
+    confirm({
+      title: 'Xác nhận xóa hóa đơn',
+      message: 'Bạn có chắc chắn muốn XÓA tạm thời hóa đơn này? Hóa đơn sẽ được đưa vào thùng rác và có thể khôi phục sau.',
+      type: 'warning',
+      confirmText: 'Chuyển vào thùng rác',
+      onConfirm: async () => {
+        try {
+          await invoicesApi.delete(id);
+          await load(showDeleted);
+          showAlert({
+            title: 'Đã chuyển vào thùng rác',
+            message: 'Hóa đơn đã được chuyển vào thùng rác thành công!',
+            type: 'success',
+          });
+        } catch (e: any) {
+          showAlert({
+            title: 'Thất bại',
+            message: getErrorMessage(e),
+            type: 'danger',
+          });
+        }
+      },
+    });
   };
 
-  const handleRestoreInvoice = async (id: string) => {
-    try {
-      await invoicesApi.restore(id);
-      toast.success('Đã phục hồi hóa đơn thành công!');
-      await load(showDeleted);
-    } catch (e: any) {
-      toast.error(getErrorMessage(e));
-    }
+  const handleRestoreInvoice = (id: string) => {
+    confirm({
+      title: 'Xác nhận phục hồi hóa đơn',
+      message: 'Bạn có muốn phục hồi hóa đơn này trở lại danh sách hoạt động?',
+      type: 'info',
+      confirmText: 'Phục hồi',
+      onConfirm: async () => {
+        try {
+          await invoicesApi.restore(id);
+          await load(showDeleted);
+          showAlert({
+            title: 'Thành công',
+            message: 'Đã phục hồi hóa đơn thành công!',
+            type: 'success',
+          });
+        } catch (e: any) {
+          showAlert({
+            title: 'Thất bại',
+            message: getErrorMessage(e),
+            type: 'danger',
+          });
+        }
+      },
+    });
   };
 
   const isTenant = currentUser?.role === 'TENANT';

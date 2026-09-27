@@ -4,9 +4,10 @@ import Header from '@/components/layout/Header';
 import { buildingsApi, chatApi, Building, ChatMessage, ChatMember } from '@/lib/api';
 import { getUser, getToken } from '@/lib/auth';
 import { Send, MessageSquare, Building2, Clock, Users, Trash2, ArrowRight, X, ChevronRight, User } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 export default function ChatPage() {
+  const { confirm, showAlert } = useConfirm();
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const [members, setMembers] = useState<ChatMember[]>([]);
@@ -43,7 +44,7 @@ export default function ChatPage() {
           setForwardBuildingId(res.data[0].id);
         }
       } catch (err) {
-        toast.error('Không thể tải danh sách tòa nhà');
+        console.error('Không thể tải danh sách tòa nhà', err);
       } finally {
         setLoading(false);
       }
@@ -96,7 +97,7 @@ export default function ChatPage() {
         const res = await chatApi.listMessages(selectedBuildingId, recipientId);
         setMessages(res.data || []);
       } catch (err) {
-        toast.error('Lỗi khi tải lịch sử tin nhắn');
+        console.error('Lỗi khi tải lịch sử tin nhắn', err);
       }
     };
     fetchHistory();
@@ -197,19 +198,40 @@ export default function ChatPage() {
           setNewMessage('');
         })
         .catch(() => {
-          toast.error('Không thể gửi tin nhắn. Vui lòng kết nối lại!');
+          showAlert({
+            title: 'Lỗi gửi tin nhắn',
+            message: 'Không thể gửi tin nhắn. Vui lòng kiểm tra lại kết nối mạng!',
+            type: 'danger',
+          });
         });
     }
   };
 
   // Recall (delete) message
   const handleRecallMessage = async (messageId: string) => {
-    try {
-      await chatApi.recallMessage(selectedBuildingId, messageId);
-      toast.success('Đã thu hồi tin nhắn');
-    } catch (err) {
-      toast.error('Không thể thu hồi tin nhắn');
-    }
+    confirm({
+      title: 'Thu hồi tin nhắn',
+      message: 'Bạn có chắc chắn muốn thu hồi tin nhắn này đối với mọi người không?',
+      confirmText: 'Thu hồi ngay',
+      cancelText: 'Hủy',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          await chatApi.recallMessage(selectedBuildingId, messageId);
+          showAlert({
+            title: 'Đã thu hồi',
+            message: 'Tin nhắn đã được thu hồi thành công.',
+            type: 'info',
+          });
+        } catch (err) {
+          showAlert({
+            title: 'Lỗi thu hồi',
+            message: 'Không thể thu hồi tin nhắn lúc này.',
+            type: 'danger',
+          });
+        }
+      },
+    });
   };
 
   // Forward message content
@@ -218,10 +240,18 @@ export default function ChatPage() {
     try {
       const recipientId = forwardRecipientId === 'group' ? undefined : forwardRecipientId;
       await chatApi.sendMessage(forwardBuildingId, `[Chuyển tiếp]: ${forwardMessage.message}`, recipientId);
-      toast.success('Đã chuyển tiếp tin nhắn thành công!');
+      showAlert({
+        title: 'Chuyển tiếp thành công',
+        message: 'Đã chuyển tiếp tin nhắn thành công!',
+        type: 'success',
+      });
       setForwardMessage(null);
     } catch (err) {
-      toast.error('Chuyển tiếp thất bại');
+      showAlert({
+        title: 'Chuyển tiếp thất bại',
+        message: 'Không thể chuyển tiếp tin nhắn lúc này.',
+        type: 'danger',
+      });
     }
   };
 
@@ -543,7 +573,6 @@ export default function ChatPage() {
                             setChatTarget(m.user_id);
                             setSelectedMember(m);
                             setShowMembersDrawer(false);
-                            toast.success(`Đã mở cuộc trò chuyện riêng với ${m.role === 'OWNER' ? 'Chủ nhà' : m.room_number}`);
                           }}
                           className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-indigo-100 transition-all flex-shrink-0"
                         >

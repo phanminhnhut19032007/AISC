@@ -4,7 +4,7 @@ import Header from '@/components/layout/Header';
 import { ticketsApi, Ticket, buildingsApi, Room, Building } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { Wrench, AlertCircle, Clock, CheckCircle2, XCircle, RefreshCw, Plus, X } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   OPEN: { label: 'Mới', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: AlertCircle },
@@ -29,6 +29,7 @@ const PRIORITY_LABEL: Record<string, string> = {
 };
 
 export default function TicketsPage() {
+  const { confirm, showAlert } = useConfirm();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -75,38 +76,72 @@ export default function TicketsPage() {
     load();
   }, []);
 
-  const handleStatusUpdate = async (id: string, status: string) => {
+  const handleStatusUpdate = (id: string, status: string) => {
+    let title = 'Xác nhận cập nhật trạng thái';
     let confirmMsg = 'Bạn có chắc chắn muốn chuyển trạng thái phiếu bảo trì này?';
+    let confirmBtn = 'Xác nhận';
+    let dialogType: 'info' | 'warning' | 'success' | 'danger' = 'info';
+
     if (status === 'ASSIGNED') {
+      title = 'Phân công kỹ thuật viên';
       confirmMsg = 'Bạn có chắc chắn muốn PHÂN CÔNG xử lý phiếu bảo trì này?';
+      confirmBtn = 'Phân công';
     } else if (status === 'IN_PROGRESS') {
-      confirmMsg = 'Bạn có chắc chắn muốn BẮT ĐẦU xử lý phiếu bảo trì này?';
+      title = 'Bắt đầu xử lý sự cố';
+      confirmMsg = 'Bạn có chắc chắn muốn BẮT ĐẦU tiến trình xử lý phiếu bảo trì này?';
+      confirmBtn = 'Bắt đầu xử lý';
     } else if (status === 'CLOSED') {
-      confirmMsg = 'Bạn có chắc chắn muốn xác nhận HOÀN THÀNH phiếu bảo trì này?';
+      title = 'Xác nhận hoàn thành';
+      confirmMsg = 'Bạn có chắc chắn muốn xác nhận ĐÃ HOÀN THÀNH và đóng phiếu bảo trì này?';
+      confirmBtn = 'Đóng phiếu';
+      dialogType = 'success';
     }
 
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
-
-    try {
-      await ticketsApi.updateStatus(id, status);
-      toast.success('Cập nhật trạng thái thành công!');
-      await load();
-    } catch (e: any) {
-      toast.error(e.response?.data?.detail || 'Lỗi cập nhật trạng thái');
-    }
+    confirm({
+      title,
+      message: confirmMsg,
+      type: dialogType,
+      confirmText: confirmBtn,
+      onConfirm: async () => {
+        try {
+          await ticketsApi.updateStatus(id, status);
+          await load();
+          showAlert({
+            title: 'Thành công',
+            message: 'Đã cập nhật trạng thái phiếu bảo trì thành công!',
+            type: 'success',
+          });
+        } catch (e: any) {
+          showAlert({
+            title: 'Lỗi cập nhật',
+            message: e.response?.data?.detail || 'Lỗi cập nhật trạng thái phiếu',
+            type: 'danger',
+          });
+        }
+      },
+    });
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!createForm.room_id) return toast.error('Vui lòng chọn phòng phát sinh sự cố');
-    if (!createForm.title.trim()) return toast.error('Vui lòng nhập tiêu đề sự cố');
+    if (!createForm.room_id) {
+      return showAlert({
+        title: 'Chưa chọn phòng',
+        message: 'Vui lòng chọn phòng phát sinh sự cố cần bảo trì.',
+        type: 'warning',
+      });
+    }
+    if (!createForm.title.trim()) {
+      return showAlert({
+        title: 'Thiếu tiêu đề sự cố',
+        message: 'Vui lòng nhập tiêu đề mô tả sự cố.',
+        type: 'warning',
+      });
+    }
 
     setSubmitting(true);
     try {
       await ticketsApi.create(createForm);
-      toast.success('Gửi báo cáo sự cố thành công!');
       setShowCreateModal(false);
       setCreateForm({
         room_id: rooms.length > 0 ? rooms[0].id : '',
@@ -115,8 +150,18 @@ export default function TicketsPage() {
         priority: 'MEDIUM',
       });
       await load();
+
+      showAlert({
+        title: 'Báo cáo thành công',
+        message: 'Yêu cầu bảo trì của bạn đã được gửi đến Ban Quản lý / Chủ trọ!',
+        type: 'success',
+      });
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Gửi báo cáo sự cố thất bại');
+      showAlert({
+        title: 'Gửi báo cáo thất bại',
+        message: err.response?.data?.detail || 'Gửi báo cáo sự cố thất bại',
+        type: 'danger',
+      });
     } finally {
       setSubmitting(false);
     }

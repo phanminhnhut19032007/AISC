@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { emergencyApi, EmergencyAlert } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { Siren, Phone, AlertTriangle, Flame, ShieldAlert, HeartPulse, Zap, CheckCircle2 } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
   FIRE: { label: 'HỎA HOẠN / CHÁY NỔ', icon: Flame, color: 'text-red-500', bg: 'bg-red-500/10' },
@@ -64,11 +63,10 @@ export default function EmergencyAlertOverlay() {
     setAcknowledging(true);
     try {
       await emergencyApi.acknowledge(currentAlert.id);
-      toast.success('Đã xác nhận tiếp nhận tin khẩn cấp!');
       // Remove acknowledged alert from local state
       setActiveAlerts((prev) => prev.filter((a) => a.id !== currentAlert.id));
     } catch (e: any) {
-      toast.error('Lỗi khi xác nhận tin khẩn cấp');
+      console.error('Lỗi khi xác nhận tin khẩn cấp', e);
     } finally {
       setAcknowledging(false);
     }

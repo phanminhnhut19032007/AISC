@@ -1,9 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import toast from 'react-hot-toast';
-import { authApi } from '@/lib/api';
-import { saveAuth } from '@/lib/auth';
 import { 
   Phone, Lock, ArrowRight, ShieldCheck, Users, 
   ArrowLeft, Eye, EyeOff, Check, 
@@ -11,10 +8,14 @@ import {
   MessageSquare, RefreshCw, Smartphone, Sparkles, Shield,
   CheckCircle2, Clock
 } from 'lucide-react';
+import { authApi } from '@/lib/api';
+import { saveAuth } from '@/lib/auth';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showAlert } = useConfirm();
   const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [selectedRole, setSelectedRole] = useState<'' | 'OWNER' | 'TENANT'>('');
   
@@ -311,7 +312,6 @@ function LoginForm() {
 
       // Success animation trigger
       setIsSuccess(true);
-      toast.success(`Chào mừng, ${res.data.full_name}!`);
 
       setTimeout(() => {
         router.push('/dashboard');
@@ -337,7 +337,6 @@ function LoginForm() {
         }
 
         setIsSuccess(true);
-        toast.success(`Chào mừng, ${fallbackUser.full_name}!`);
 
         setTimeout(() => {
           router.push('/dashboard');
@@ -358,7 +357,6 @@ function LoginForm() {
     while (digits.length < 6) digits.push('');
     setOtpDigits(digits);
     inputRefs.current[5]?.focus();
-    toast.success('Đã điền mã OTP!', { icon: '✨' });
   };
 
   // Xử lý khi nhập từng ô OTP
@@ -459,18 +457,12 @@ function LoginForm() {
       setOtpDigits(['', '', '', '', '', '']);
       setRegStep('VERIFY_OTP');
       setCountdown(60);
-
-      toast.success(
-        `📲 Mã OTP đã gửi về SMS số ${phone}!`,
-        { duration: 4000 }
-      );
     } catch (err: any) {
       const fallbackOtp = `${Math.floor(100000 + Math.random() * 900000)}`;
       setDemoOtp(fallbackOtp);
       setOtpDigits(['', '', '', '', '', '']);
       setRegStep('VERIFY_OTP');
       setCountdown(60);
-      toast.success(`📲 Mã OTP đã gửi về SMS số ${phone}!`);
     } finally {
       setLoading(false);
     }
@@ -487,14 +479,12 @@ function LoginForm() {
       setDemoOtp(generatedOtp);
       setOtpDigits(['', '', '', '', '', '']);
       setCountdown(60);
-      toast.success('Đã gửi lại mã OTP mới qua SMS!');
       inputRefs.current[0]?.focus();
     } catch (_) {
       const fallbackOtp = `${Math.floor(100000 + Math.random() * 900000)}`;
       setDemoOtp(fallbackOtp);
       setOtpDigits(['', '', '', '', '', '']);
       setCountdown(60);
-      toast.success('Đã gửi lại mã OTP mới!');
       inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -542,7 +532,6 @@ function LoginForm() {
       });
 
       setIsSuccess(true);
-      toast.success(`Đăng ký thành công! Chào mừng, ${res.data.full_name}!`);
 
       setTimeout(() => {
         router.push('/dashboard');
@@ -597,7 +586,6 @@ function LoginForm() {
                 role: res.data.role,
               });
               setIsSuccess(true);
-              toast.success(`Chào mừng, ${res.data.full_name}!`);
               setTimeout(() => {
                 router.push('/dashboard');
               }, 700);
@@ -612,16 +600,18 @@ function LoginForm() {
         (window as any).google.accounts.id.prompt();
       } catch (err) {
         console.error(err);
-        toast.error('Lỗi khi mở xác thực Google');
+        setErrorMessage('Lỗi khi mở xác thực Google.');
       }
     } else {
-      toast.error('Dịch vụ Google Login đang khởi động, vui lòng thử lại sau 1 giây.');
+      setErrorMessage('Dịch vụ Google Login đang khởi động, vui lòng thử lại sau 1 giây.');
     }
   };
 
   const handleFacebookLogin = () => {
-    toast('Tính năng Đăng nhập Facebook đang được tích hợp!', {
-      icon: 'ℹ️',
+    showAlert({
+      title: 'Đang phát triển',
+      message: 'Tính năng Đăng nhập bằng Facebook đang được tích hợp!',
+      type: 'info',
     });
   };
 

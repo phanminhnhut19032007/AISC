@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { ConfirmationProvider } from '@/context/ConfirmationContext';
 
 export const metadata: Metadata = {
   title: 'REASY - Quản lý trọ thông minh',
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <body className="antialiased overflow-x-hidden">
-        {children}
+        <ConfirmationProvider>
+          {children}
+        </ConfirmationProvider>
       </body>
     </html>
   );

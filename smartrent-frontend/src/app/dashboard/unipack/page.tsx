@@ -6,7 +6,7 @@ import {
   ShoppingBag, Clock, Calendar, QrCode, Plus, Minus, 
   Tag, AlertCircle, ShoppingCart, X, Info, Trash2, Check, AlertTriangle 
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 interface Product {
   id: string;
@@ -101,6 +101,7 @@ const PRODUCTS: Product[] = [
 ];
 
 export default function UniPackPage() {
+  const { confirm, showAlert } = useConfirm();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -207,7 +208,6 @@ export default function UniPackPage() {
     }
     setCart(updated);
     localStorage.setItem('unipack_cart', JSON.stringify(updated));
-    toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`);
   };
 
   // Adjust product quantity in cart
@@ -246,7 +246,6 @@ export default function UniPackPage() {
     const updated = cart.filter(item => item.product.id !== productId);
     setCart(updated);
     localStorage.setItem('unipack_cart', JSON.stringify(updated));
-    toast.success('Đã xóa sản phẩm khỏi giỏ hàng.');
   };
 
   // Quick buy action
@@ -270,12 +269,20 @@ export default function UniPackPage() {
   // Place orders and clear checked items in cart
   const handlePlaceOrder = () => {
     if (!receiverName.trim() || !receiverPhone.trim() || !roomNumber.trim()) {
-      return toast.error('Vui lòng điền đầy đủ thông tin giao nhận hàng');
+      return showAlert({
+        title: 'Thiếu thông tin giao hàng',
+        message: 'Vui lòng điền đầy đủ Họ tên, Số điện thoại và Số phòng nhận hàng.',
+        type: 'warning',
+      });
     }
 
     const checkedItems = cart.filter(item => item.checked);
     if (checkedItems.length === 0) {
-      return toast.error('Không có sản phẩm nào được chọn thanh toán');
+      return showAlert({
+        title: 'Chưa chọn sản phẩm',
+        message: 'Vui lòng chọn ít nhất 1 sản phẩm trong giỏ để tiến hành thanh toán.',
+        type: 'warning',
+      });
     }
 
     const now = Date.now();
@@ -295,33 +302,65 @@ export default function UniPackPage() {
       isPaid: false // Always starts as UNPAID until customer pays or confirms!
     }));
 
-    const updatedOrders = [...newOrders, ...orders];
-    setOrders(updatedOrders);
-    localStorage.setItem('unipack_orders', JSON.stringify(updatedOrders));
+    const totalMoney = checkedItems.reduce((sum, item) => sum + item.product.promoPrice * item.quantity, 0);
 
-    const remainingCart = cart.filter(item => !item.checked);
-    setCart(remainingCart);
-    localStorage.setItem('unipack_cart', JSON.stringify(remainingCart));
+    confirm({
+      title: 'Xác nhận đặt đơn hàng UniPack',
+      message: `Xác nhận đặt ${checkedItems.length} gói sản phẩm với tổng thanh toán ${new Intl.NumberFormat('vi-VN').format(totalMoney)} đ? Đơn hàng sẽ được giao vào Chủ Nhật tuần này.`,
+      type: 'info',
+      confirmText: 'Xác nhận đặt hàng',
+      onConfirm: () => {
+        const updatedOrders = [...newOrders, ...orders];
+        setOrders(updatedOrders);
+        localStorage.setItem('unipack_orders', JSON.stringify(updatedOrders));
 
-    setProgressOrders(prev => prev + newOrders.length);
+        const remainingCart = cart.filter(item => !item.checked);
+        setCart(remainingCart);
+        localStorage.setItem('unipack_cart', JSON.stringify(remainingCart));
 
-    toast.success('Đặt hàng UniPack thành công! Bạn có 1 giờ để hủy đơn nếu đổi ý.');
-    setShowCheckoutModal(false);
-    setShowCartModal(false);
+        setProgressOrders(prev => prev + newOrders.length);
+        setShowCheckoutModal(false);
+        setShowCartModal(false);
+
+        showAlert({
+          title: 'Đặt hàng thành công!',
+          message: 'Đơn hàng UniPack đã được tiếp nhận. Bạn có 1 giờ để đổi ý và hủy đơn trên màn hình.',
+          type: 'success',
+        });
+      },
+    });
   };
 
   const handleTogglePaymentStatus = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (order && order.status === 'CANCELLED') {
-      toast.error('Không thể đổi trạng thái thanh toán của đơn hàng đã hủy!');
+      showAlert({
+        title: 'Không thể cập nhật',
+        message: 'Không thể thay đổi trạng thái thanh toán của đơn hàng đã hủy!',
+        type: 'warning',
+      });
       return;
     }
-    const updated = orders.map(o =>
-      o.id === orderId ? { ...o, isPaid: !o.isPaid } : o
-    );
-    setOrders(updated);
-    localStorage.setItem('unipack_orders', JSON.stringify(updated));
-    toast.success('Đã cập nhật trạng thái thanh toán!');
+
+    const nextState = !order?.isPaid;
+    confirm({
+      title: 'Cập nhật trạng thái thanh toán',
+      message: `Xác nhận chuyển trạng thái đơn hàng #${orderId} sang "${nextState ? 'Đã thanh toán' : 'Chưa thanh toán'}"?`,
+      type: 'info',
+      confirmText: 'Cập nhật',
+      onConfirm: () => {
+        const updated = orders.map(o =>
+          o.id === orderId ? { ...o, isPaid: !o.isPaid } : o
+        );
+        setOrders(updated);
+        localStorage.setItem('unipack_orders', JSON.stringify(updated));
+        showAlert({
+          title: 'Thành công',
+          message: 'Đã cập nhật trạng thái thanh toán đơn hàng!',
+          type: 'success',
+        });
+      },
+    });
   };
 
   const handleCancelOrder = (orderId: string) => {
@@ -329,27 +368,43 @@ export default function UniPackPage() {
     if (!order) return;
     
     if (order.status === 'CANCELLED') {
-      toast.error('Đơn hàng này đã được hủy trước đó');
+      showAlert({
+        title: 'Đơn đã hủy',
+        message: 'Đơn hàng này đã được hủy trước đó.',
+        type: 'warning',
+      });
       return;
     }
 
     const remainingMs = (order.cancelDeadline || 0) - Date.now();
     if (remainingMs <= 0) {
-      toast.error('Đã quá thời hạn 1 giờ, không thể hủy đơn hàng này nữa!');
+      showAlert({
+        title: 'Hết hạn hủy đơn',
+        message: 'Đã quá thời hạn 1 giờ kể từ lúc đặt, không thể hủy đơn hàng này nữa!',
+        type: 'warning',
+      });
       return;
     }
 
-    if (!window.confirm(`Bạn có chắc chắn muốn hủy đơn hàng #${order.id} (${order.productName}) không?`)) {
-      return;
-    }
-
-    const updated = orders.map(o =>
-      o.id === orderId ? { ...o, status: 'CANCELLED' as const } : o
-    );
-    setOrders(updated);
-    localStorage.setItem('unipack_orders', JSON.stringify(updated));
-    setProgressOrders(prev => Math.max(0, prev - 1));
-    toast.success(`Đã hủy đơn hàng #${order.id} thành công.`);
+    confirm({
+      title: 'Xác nhận hủy đơn hàng',
+      message: `Bạn có chắc chắn muốn hủy đơn hàng #${order.id} (${order.productName}) không?`,
+      type: 'warning',
+      confirmText: 'Hủy đơn hàng này',
+      onConfirm: () => {
+        const updated = orders.map(o =>
+          o.id === orderId ? { ...o, status: 'CANCELLED' as const } : o
+        );
+        setOrders(updated);
+        localStorage.setItem('unipack_orders', JSON.stringify(updated));
+        setProgressOrders(prev => Math.max(0, prev - 1));
+        showAlert({
+          title: 'Đã hủy đơn hàng',
+          message: `Đã hủy đơn hàng #${order.id} thành công.`,
+          type: 'success',
+        });
+      },
+    });
   };
 
   const fm = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
@@ -772,7 +827,11 @@ export default function UniPackPage() {
                 <button
                   onClick={() => {
                     if (checkedItemsCount === 0) {
-                      toast.error('Vui lòng chọn ít nhất 1 sản phẩm để thanh toán');
+                      showAlert({
+                        title: 'Chưa chọn sản phẩm',
+                        message: 'Vui lòng tích chọn ít nhất 1 sản phẩm trong giỏ hàng để tiến hành thanh toán.',
+                        type: 'warning',
+                      });
                       return;
                     }
                     setShowCheckoutModal(true);

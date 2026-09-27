@@ -7,7 +7,7 @@ import {
   Siren, Flame, ShieldAlert, HeartPulse, Zap, AlertTriangle, 
   Phone, CheckCircle2, Clock, X, AlertOctagon, Sparkles 
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 const EMERGENCY_TYPES = [
   { id: 'FIRE', label: 'Hỏa hoạn / Cháy nổ', icon: Flame, color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
@@ -67,6 +67,7 @@ const DEFAULT_DEMO_ALERTS: EmergencyAlert[] = [
 ];
 
 export default function EmergencySosPage() {
+  const { confirm, showAlert } = useConfirm();
   const [user, setUser] = useState<any>(null);
   const [selectedType, setSelectedType] = useState('FIRE');
   const [description, setDescription] = useState('');
@@ -155,7 +156,6 @@ export default function EmergencySosPage() {
         description: description.trim() || undefined,
       });
 
-      toast.success('🚨 ĐÃ PHÁT TÍN HIỆU BÁO ĐỘNG KHẨN CẤP ĐẾN CHỦ TRỌ!');
       setShowConfirmModal(false);
       setDescription('');
       
@@ -163,56 +163,91 @@ export default function EmergencySosPage() {
       window.dispatchEvent(new CustomEvent('new-emergency-sos'));
       
       await loadHistory();
+
+      showAlert({
+        title: '🚨 ĐÃ PHÁT BÁO ĐỘNG SOS THÀNH CÔNG',
+        message: 'Tín hiệu khẩn cấp đã được gửi và đang hú còi báo động trực tiếp tới toàn bộ màn hình của Chủ trọ và Ban Quản lý!',
+        type: 'danger',
+      });
     } catch (e: any) {
-      toast.success('🚨 ĐÃ PHÁT TÍN HIỆU BÁO ĐỘNG KHẨN CẤP ĐẾN CHỦ TRỌ!');
       setShowConfirmModal(false);
       setDescription('');
       window.dispatchEvent(new CustomEvent('new-emergency-sos'));
+
+      showAlert({
+        title: '🚨 ĐÃ PHÁT BÁO ĐỘNG SOS THÀNH CÔNG',
+        message: 'Tín hiệu khẩn cấp đã được gửi và đang hú còi báo động trực tiếp tới toàn bộ màn hình của Chủ trọ và Ban Quản lý!',
+        type: 'danger',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAcknowledgeAlert = async (id: string) => {
-    setActionLoadingId(id);
-    try {
-      await emergencyApi.acknowledge(id);
-    } catch (e) {}
+  const handleAcknowledgeAlert = (id: string) => {
+    confirm({
+      title: 'Xác nhận tiếp nhận xử lý',
+      message: 'Xác nhận bạn đã tiếp nhận thông tin sự cố khẩn cấp này và đang tiến hành xử lý?',
+      type: 'info',
+      confirmText: 'Tiếp nhận xử lý ngay',
+      onConfirm: async () => {
+        setActionLoadingId(id);
+        try {
+          await emergencyApi.acknowledge(id);
+        } catch (e) {}
 
-    // Update in localStorage
-    try {
-      const raw = localStorage.getItem('demo_sos_alerts');
-      const list: EmergencyAlert[] = raw ? JSON.parse(raw) : [];
-      const updated = list.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED', acknowledged_by: user?.full_name || 'Nguyễn Văn Chủ Trọ' } : a));
-      localStorage.setItem('demo_sos_alerts', JSON.stringify(updated));
-    } catch (e) {}
+        // Update in localStorage
+        try {
+          const raw = localStorage.getItem('demo_sos_alerts');
+          const list: EmergencyAlert[] = raw ? JSON.parse(raw) : [];
+          const updated = list.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED', acknowledged_by: user?.full_name || 'Nguyễn Văn Chủ Trọ' } : a));
+          localStorage.setItem('demo_sos_alerts', JSON.stringify(updated));
+        } catch (e) {}
 
-    setHistory((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED', acknowledged_by: user?.full_name || 'Nguyễn Văn Chủ Trọ' } : a))
-    );
-    toast.success('Đã xác nhận tiếp nhận tin khẩn cấp!');
-    setActionLoadingId(null);
+        setHistory((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED', acknowledged_by: user?.full_name || 'Nguyễn Văn Chủ Trọ' } : a))
+        );
+        setActionLoadingId(null);
+        showAlert({
+          title: 'Đã tiếp nhận',
+          message: 'Bạn đã tiếp nhận xử lý sự cố khẩn cấp thành công.',
+          type: 'success',
+        });
+      },
+    });
   };
 
-  const handleResolveAlert = async (id: string) => {
-    setActionLoadingId(id);
-    try {
-      await emergencyApi.resolve(id);
-    } catch (e) {}
+  const handleResolveAlert = (id: string) => {
+    confirm({
+      title: 'Xác nhận hoàn tất xử lý',
+      message: 'Bạn có chắc chắn sự cố khẩn cấp này đã được giải quyết an toàn và muốn đóng cảnh báo?',
+      type: 'success',
+      confirmText: 'Đã xử lý an toàn',
+      onConfirm: async () => {
+        setActionLoadingId(id);
+        try {
+          await emergencyApi.resolve(id);
+        } catch (e) {}
 
-    // Update in localStorage
-    try {
-      const raw = localStorage.getItem('demo_sos_alerts');
-      const list: EmergencyAlert[] = raw ? JSON.parse(raw) : [];
-      const updated = list.map((a) => (a.id === id ? { ...a, status: 'RESOLVED' } : a));
-      localStorage.setItem('demo_sos_alerts', JSON.stringify(updated));
-    } catch (e) {}
+        // Update in localStorage
+        try {
+          const raw = localStorage.getItem('demo_sos_alerts');
+          const list: EmergencyAlert[] = raw ? JSON.parse(raw) : [];
+          const updated = list.map((a) => (a.id === id ? { ...a, status: 'RESOLVED' } : a));
+          localStorage.setItem('demo_sos_alerts', JSON.stringify(updated));
+        } catch (e) {}
 
-    setHistory((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: 'RESOLVED' } : a))
-    );
-    toast.success('Đã đánh dấu xử lý xong sự cố khẩn cấp!');
-    setActionLoadingId(null);
+        setHistory((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, status: 'RESOLVED' } : a))
+        );
+        setActionLoadingId(null);
+        showAlert({
+          title: 'Đã xử lý an toàn',
+          message: 'Sự cố khẩn cấp đã được đánh dấu là đã xử lý an toàn.',
+          type: 'success',
+        });
+      },
+    });
   };
 
   return (

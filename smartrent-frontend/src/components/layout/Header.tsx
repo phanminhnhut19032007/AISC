@@ -7,7 +7,7 @@ import { getUser, clearAuth } from '@/lib/auth';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ticketsApi, invoicesApi, buildingsApi, authApi, Room } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 interface NotificationItem {
   id: string;
@@ -21,6 +21,7 @@ interface NotificationItem {
 
 export default function Header({ title }: { title: string }) {
   const router = useRouter();
+  const { confirm, showAlert } = useConfirm();
   const [user, setUser] = useState<{ id: string; role: string; full_name: string; phone?: string; email?: string } | null>(null);
   const [roomNumber, setRoomNumber] = useState<string>('');
   
@@ -266,9 +267,17 @@ export default function Header({ title }: { title: string }) {
   };
 
   const handleLogout = () => {
-    clearAuth();
-    toast.success('Đã đăng xuất tài khoản thành công');
-    router.push('/login');
+    setShowUserMenu(false);
+    confirm({
+      title: 'Xác nhận đăng xuất',
+      message: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống REASY?',
+      type: 'warning',
+      confirmText: 'Đăng xuất ngay',
+      onConfirm: () => {
+        clearAuth();
+        router.push('/login');
+      },
+    });
   };
 
   const handleOpenEditProfile = () => {
@@ -297,10 +306,18 @@ export default function Header({ title }: { title: string }) {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileForm.full_name.trim()) {
-      return toast.error('Vui lòng nhập Họ và tên');
+      return showAlert({
+        title: 'Thiếu thông tin',
+        message: 'Vui lòng nhập Họ và tên đầy đủ.',
+        type: 'warning',
+      });
     }
     if (!profileForm.phone.trim()) {
-      return toast.error('Vui lòng nhập Số điện thoại');
+      return showAlert({
+        title: 'Thiếu thông tin',
+        message: 'Vui lòng nhập Số điện thoại.',
+        type: 'warning',
+      });
     }
 
     setSavingProfile(true);
@@ -323,10 +340,18 @@ export default function Header({ title }: { title: string }) {
       setUser(updatedUser);
       localStorage.setItem('smartrent_user', JSON.stringify(updatedUser));
       
-      toast.success('Cập nhật thông tin cá nhân thành công!');
       setShowEditProfileModal(false);
+      showAlert({
+        title: 'Thành công',
+        message: 'Cập nhật thông tin cá nhân thành công!',
+        type: 'success',
+      });
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Lỗi cập nhật thông tin cá nhân');
+      showAlert({
+        title: 'Lỗi cập nhật',
+        message: err.response?.data?.detail || 'Lỗi cập nhật thông tin cá nhân',
+        type: 'danger',
+      });
     } finally {
       setSavingProfile(false);
     }
@@ -335,16 +360,32 @@ export default function Header({ title }: { title: string }) {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordForm.current_password) {
-      return toast.error('Vui lòng nhập mật khẩu hiện tại');
+      return showAlert({
+        title: 'Thiếu mật khẩu cũ',
+        message: 'Vui lòng nhập mật khẩu hiện tại.',
+        type: 'warning',
+      });
     }
     if (!passwordForm.new_password) {
-      return toast.error('Vui lòng nhập mật khẩu mới');
+      return showAlert({
+        title: 'Thiếu mật khẩu mới',
+        message: 'Vui lòng nhập mật khẩu mới.',
+        type: 'warning',
+      });
     }
     if (passwordForm.new_password.length < 6) {
-      return toast.error('Mật khẩu mới phải có tối thiểu 6 ký tự');
+      return showAlert({
+        title: 'Mật khẩu quá ngắn',
+        message: 'Mật khẩu mới phải có tối thiểu 6 ký tự.',
+        type: 'warning',
+      });
     }
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      return toast.error('Xác nhận mật khẩu mới không khớp');
+      return showAlert({
+        title: 'Mật khẩu không khớp',
+        message: 'Xác nhận mật khẩu mới không khớp.',
+        type: 'warning',
+      });
     }
 
     setChangingPassword(true);
@@ -354,11 +395,19 @@ export default function Header({ title }: { title: string }) {
         new_password: passwordForm.new_password
       });
 
-      toast.success('Đổi mật khẩu thành công!');
       setShowChangePasswordModal(false);
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+      showAlert({
+        title: 'Đổi mật khẩu thành công',
+        message: 'Mật khẩu tài khoản của bạn đã được cập nhật thành công!',
+        type: 'success',
+      });
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Mật khẩu hiện tại không chính xác');
+      showAlert({
+        title: 'Lỗi đổi mật khẩu',
+        message: err.response?.data?.detail || 'Mật khẩu hiện tại không chính xác.',
+        type: 'danger',
+      });
     } finally {
       setChangingPassword(false);
     }
