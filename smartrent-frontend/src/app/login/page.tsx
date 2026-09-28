@@ -547,13 +547,13 @@ function LoginForm() {
       });
 
       if (selectedRole === 'OWNER') {
-        // Switch to Step 3: Owner KYC
+        // Switch to Step 3: Owner KYC (starts completely empty)
         setRegStep('OWNER_KYC');
         setLoading(false);
-        setKycFront('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=500&auto=format&fit=crop&q=60');
-        setKycBack('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&auto=format&fit=crop&q=60');
-        setKycProperty('https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&auto=format&fit=crop&q=60');
-        setKycBusiness('https://images.unsplash.com/photo-1450133064473-71024230f91b?w=500&auto=format&fit=crop&q=60');
+        setKycFront(null);
+        setKycBack(null);
+        setKycProperty(null);
+        setKycBusiness(null);
         return;
       }
 
@@ -601,14 +601,23 @@ function LoginForm() {
     if (!skip) {
       updateUserVerification('PENDING', {
         id_card_front: kycFront,
+        id_card_front_status: kycFront ? 'PENDING' : 'EMPTY',
         id_card_back: kycBack,
+        id_card_back_status: kycBack ? 'PENDING' : 'EMPTY',
         property_doc: kycProperty,
+        property_doc_status: kycProperty ? 'PENDING' : 'EMPTY',
         business_license: kycBusiness,
+        business_license_status: kycBusiness ? 'PENDING' : 'EMPTY',
         id_number: kycIdNumber,
         submitted_at: new Date().toISOString(),
       });
     } else {
-      updateUserVerification('PENDING');
+      updateUserVerification('PENDING', {
+        id_card_front_status: 'EMPTY',
+        id_card_back_status: 'EMPTY',
+        property_doc_status: 'EMPTY',
+        business_license_status: 'EMPTY',
+      });
     }
 
     setIsSuccess(true);
@@ -1420,79 +1429,112 @@ function LoginForm() {
                         </div>
                       </div>
 
-                      {/* 3 Upload Cards */}
-                      <div className="space-y-2.5 max-h-68 overflow-y-auto pr-1">
-                        {/* 1. CCCD 2 Mặt */}
-                        <div className="p-3 bg-[#F8FAFC] border border-slate-200 rounded-xl">
-                          <div className="flex items-center justify-between mb-1.5">
+                      {/* 4 Upload Cards */}
+                      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                        {/* 1. CCCD Mặt trước */}
+                        <div className={`p-3 rounded-xl border transition-all ${
+                          kycFront ? 'bg-amber-50/40 border-amber-300' : 'bg-[#F8FAFC] border-slate-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                               <span className="w-5 h-5 rounded-md bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">1</span>
-                              CCCD 2 mặt chính chủ <span className="text-red-500">*</span>
+                              CCCD Mặt trước <span className="text-red-500">*</span>
                             </span>
-                            <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md">
-                              Khớp: {registerForm.fullName || 'Chủ trọ'}
-                            </span>
+                            {kycFront ? (
+                              <span className="text-[10px] text-amber-800 font-extrabold bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                                <span className="w-3 h-3 bg-amber-500 text-white rounded-full flex items-center justify-center text-[9px] font-black">!</span> Chờ duyệt
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">Chưa có ảnh</span>
+                            )}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 mt-2">
-                            <div 
-                              onClick={() => kycFrontRef.current?.click()}
-                              className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors"
-                            >
-                              <Camera className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
-                              <span className="text-[11px] font-bold text-blue-600 block truncate">
-                                {kycFront ? 'Đã chọn mặt trước' : 'Mặt trước'}
-                              </span>
-                              <input 
-                                type="file" 
-                                ref={kycFrontRef} 
-                                className="hidden" 
-                                accept="image/*" 
-                                onChange={(e) => handleKycFileUpload(e, setKycFront, true)}
-                              />
-                            </div>
-
-                            <div 
-                              onClick={() => kycBackRef.current?.click()}
-                              className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors"
-                            >
-                              <Camera className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
-                              <span className="text-[11px] font-bold text-blue-600 block truncate">
-                                {kycBack ? 'Đã chọn mặt sau' : 'Mặt sau'}
-                              </span>
-                              <input 
-                                type="file" 
-                                ref={kycBackRef} 
-                                className="hidden" 
-                                accept="image/*" 
-                                onChange={(e) => handleKycFileUpload(e, setKycBack)}
-                              />
-                            </div>
+                          <div 
+                            onClick={() => kycFrontRef.current?.click()}
+                            className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2 mt-1.5"
+                          >
+                            <Camera className="w-4 h-4 text-slate-400" />
+                            <span className="text-xs font-bold text-blue-600 truncate">
+                              {kycFront ? 'Đã tải ảnh mặt trước' : 'Chọn ảnh CCCD mặt trước'}
+                            </span>
+                            <input 
+                              type="file" 
+                              ref={kycFrontRef} 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={(e) => handleKycFileUpload(e, setKycFront, true)}
+                            />
                           </div>
 
                           {kycOcrScanning && (
-                            <p className="text-[10px] text-blue-600 font-medium mt-1.5 flex items-center gap-1">
+                            <p className="text-[10px] text-blue-600 font-medium mt-1 flex items-center gap-1">
                               <RefreshCw className="w-3 h-3 animate-spin" /> AI đang đối soát họ tên CCCD...
                             </p>
                           )}
                           {kycOcrMatched && (
-                            <p className="text-[10px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1">
+                            <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Đã quét khớp tên: {registerForm.fullName || 'Chủ trọ'}
                             </p>
                           )}
                         </div>
 
-                        {/* 2. Sổ hồng / Sổ đỏ HOẶC HĐ Thuê quản lý */}
-                        <div className="p-3 bg-[#F8FAFC] border border-slate-200 rounded-xl">
-                          <div className="flex items-center justify-between mb-1.5">
+                        {/* 2. CCCD Mặt sau */}
+                        <div className={`p-3 rounded-xl border transition-all ${
+                          kycBack ? 'bg-amber-50/40 border-amber-300' : 'bg-[#F8FAFC] border-slate-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                               <span className="w-5 h-5 rounded-md bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                              CCCD Mặt sau <span className="text-red-500">*</span>
+                            </span>
+                            {kycBack ? (
+                              <span className="text-[10px] text-amber-800 font-extrabold bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                                <span className="w-3 h-3 bg-amber-500 text-white rounded-full flex items-center justify-center text-[9px] font-black">!</span> Chờ duyệt
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">Chưa có ảnh</span>
+                            )}
+                          </div>
+
+                          <div 
+                            onClick={() => kycBackRef.current?.click()}
+                            className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2 mt-1.5"
+                          >
+                            <Camera className="w-4 h-4 text-slate-400" />
+                            <span className="text-xs font-bold text-blue-600 truncate">
+                              {kycBack ? 'Đã tải ảnh mặt sau' : 'Chọn ảnh CCCD mặt sau'}
+                            </span>
+                            <input 
+                              type="file" 
+                              ref={kycBackRef} 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={(e) => handleKycFileUpload(e, setKycBack)}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 3. Sổ hồng / Sổ đỏ HOẶC HĐ Thuê quản lý */}
+                        <div className={`p-3 rounded-xl border transition-all ${
+                          kycProperty ? 'bg-amber-50/40 border-amber-300' : 'bg-[#F8FAFC] border-slate-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-md bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
                               Sổ hồng / Sổ đỏ hoặc HĐ thuê QL <span className="text-red-500">*</span>
                             </span>
+                            {kycProperty ? (
+                              <span className="text-[10px] text-amber-800 font-extrabold bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                                <span className="w-3 h-3 bg-amber-500 text-white rounded-full flex items-center justify-center text-[9px] font-black">!</span> Chờ duyệt
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">Chưa có ảnh</span>
+                            )}
                           </div>
+
                           <div 
                             onClick={() => kycPropertyRef.current?.click()}
-                            className="p-2.5 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2"
+                            className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2 mt-1.5"
                           >
                             <FileText className="w-4 h-4 text-blue-600" />
                             <span className="text-xs font-bold text-blue-600 truncate">
@@ -1508,18 +1550,27 @@ function LoginForm() {
                           </div>
                         </div>
 
-                        {/* 3. Giấy phép KD / Giấy phép PCCC */}
-                        <div className="p-3 bg-[#F8FAFC] border border-slate-200 rounded-xl">
-                          <div className="flex items-center justify-between mb-1.5">
+                        {/* 4. Giấy phép KD / Giấy phép PCCC */}
+                        <div className={`p-3 rounded-xl border transition-all ${
+                          kycBusiness ? 'bg-amber-50/40 border-amber-300' : 'bg-[#F8FAFC] border-slate-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-md bg-slate-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
+                              <span className="w-5 h-5 rounded-md bg-slate-600 text-white text-[10px] font-black flex items-center justify-center">4</span>
                               Giấy phép KD / Cam kết PCCC
                             </span>
-                            <span className="text-[10px] text-slate-400">Khuyến khích</span>
+                            {kycBusiness ? (
+                              <span className="text-[10px] text-amber-800 font-extrabold bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                                <span className="w-3 h-3 bg-amber-500 text-white rounded-full flex items-center justify-center text-[9px] font-black">!</span> Chờ duyệt
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">Chưa có ảnh</span>
+                            )}
                           </div>
+
                           <div 
                             onClick={() => kycBusinessRef.current?.click()}
-                            className="p-2.5 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2"
+                            className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2 mt-1.5"
                           >
                             <Award className="w-4 h-4 text-blue-600" />
                             <span className="text-xs font-bold text-blue-600 truncate">
