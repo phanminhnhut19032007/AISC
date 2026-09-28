@@ -701,7 +701,7 @@ function LoginForm() {
   const isOtpComplete = otpDigits.every((d) => d !== '');
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#F8FAFC] flex items-center justify-center p-4 selection:bg-amber-100 selection:text-amber-900">
+    <div className="min-h-screen relative overflow-hidden bg-[#F8FAFC] flex flex-col items-center justify-center p-3 sm:p-4 selection:bg-amber-100 selection:text-amber-900">
       {/* 1. Dynamic Canvas Background */}
       <canvas
         ref={canvasRef}
@@ -709,62 +709,62 @@ function LoginForm() {
       />
 
       {/* 2. Main Foreground Content */}
-      <div className="w-full max-w-[450px] relative z-10 flex flex-col items-center">
+      <div className="w-full max-w-[410px] relative z-10 flex flex-col items-center my-auto">
         {/* Floating Elegant Logo Card with Soft Glow Halo */}
-        <div className="relative mb-4 group">
-          <div className="absolute -inset-2 bg-gradient-to-r from-[#FDE68A] via-[#BAE6FD] to-[#93C5FD] rounded-[26px] blur-xl opacity-75 animate-pulse" />
+        <div className="relative mb-2 group">
+          <div className="absolute -inset-1.5 bg-gradient-to-r from-[#FDE68A] via-[#BAE6FD] to-[#93C5FD] rounded-[22px] blur-lg opacity-70 animate-pulse" />
 
-          <div className="relative w-[116px] h-[80px] p-2 bg-white rounded-[22px] border border-[#E2E8F0] shadow-[0_10px_25px_-5px_rgba(15,23,42,0.08),0_4px_12px_rgba(56,189,248,0.2)] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+          <div className="relative w-[84px] h-[56px] p-1.5 bg-white rounded-[18px] border border-[#E2E8F0] shadow-[0_8px_20px_-4px_rgba(15,23,42,0.08),0_3px_10px_rgba(56,189,248,0.18)] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <img
               src="/logo.jpg"
               alt="REASY Logo"
-              className="w-full h-full object-contain rounded-xl"
+              className="w-full h-full object-contain rounded-lg"
             />
           </div>
         </div>
 
         {/* Title: Chào mừng đến REASY */}
-        <div className="text-center mb-5">
-          <h1 className="text-[23px] font-extrabold text-[#0F172A] tracking-tight flex items-center justify-center gap-1.5">
+        <div className="text-center mb-3">
+          <h1 className="text-[19px] sm:text-[21px] font-extrabold text-[#0F172A] tracking-tight flex items-center justify-center gap-1.5 leading-tight">
             <span>Chào mừng đến</span>
-            <span className="bg-gradient-to-r from-[#D97706] via-[#0284C7] to-[#2563EB] bg-clip-text text-transparent text-[25px] font-black tracking-wide">
+            <span className="bg-gradient-to-r from-[#D97706] via-[#0284C7] to-[#2563EB] bg-clip-text text-transparent text-[21px] sm:text-[23px] font-black tracking-wide">
               REASY
             </span>
           </h1>
-          <p className="text-[12.5px] text-[#64748B] font-medium mt-1">
+          <p className="text-[11.5px] text-[#64748B] font-medium mt-0.5">
             Hệ thống quản lý phòng trọ & cư dân thông minh
           </p>
         </div>
 
         {/* Pure White Modern Card */}
-        <div className="w-full bg-white rounded-[28px] p-6 sm:p-7 border border-[#E2E8F0] shadow-[0_20px_40px_-15px_rgba(15,23,42,0.07),0_0_20px_rgba(56,189,248,0.05)] transition-all">
+        <div className="w-full bg-white rounded-[24px] p-5 sm:p-5.5 border border-[#E2E8F0] shadow-[0_15px_35px_-10px_rgba(15,23,42,0.07),0_0_15px_rgba(56,189,248,0.04)] transition-all">
           {selectedRole === '' ? (
             /* ─── BƯỚC 1: XÁC NHẬN VAI TRÒ ─── */
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="text-center">
-                <h2 className="text-[17px] font-extrabold text-[#0F172A]">
+                <h2 className="text-[15.5px] font-extrabold text-[#0F172A]">
                   Xác nhận vai trò truy cập
                 </h2>
-                <p className="text-[12px] text-[#64748B] mt-1">
+                <p className="text-[11.5px] text-[#64748B] mt-0.5">
                   Vui lòng chọn cổng truy cập của bạn để tiếp tục
                 </p>
               </div>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2.5 pt-1">
                 {/* Option 1: Chủ trọ / Quản trị */}
                 <button
                   type="button"
                   onClick={() => selectRole('OWNER')}
-                  className="w-full p-3.5 bg-white hover:bg-slate-50 border border-[#E2E8F0] hover:border-blue-300 rounded-[18px] shadow-[0_4px_10px_rgba(15,23,42,0.03)] hover:shadow-md transition-all duration-200 flex items-center gap-3.5 text-left group cursor-pointer active:scale-[0.98]"
+                  className="w-full p-3 bg-white hover:bg-slate-50 border border-[#E2E8F0] hover:border-blue-300 rounded-[16px] shadow-[0_3px_8px_rgba(15,23,42,0.03)] hover:shadow-md transition-all duration-200 flex items-center gap-3 text-left group cursor-pointer active:scale-[0.98]"
                 >
-                  <div className="w-11 h-11 rounded-[14px] bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#2563EB] flex-shrink-0 group-hover:scale-105 transition-transform">
-                    <ShieldCheck className="w-6 h-6" />
+                  <div className="w-10 h-10 rounded-[12px] bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#2563EB] flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[14.5px] font-bold text-[#0F172A] group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-blue-600 transition-colors">
                       Chủ trọ / Quản trị
                     </h3>
-                    <p className="text-[11px] text-[#64748B] truncate mt-0.5">
+                    <p className="text-[10.5px] text-[#64748B] truncate mt-0.5">
                       Quản lý tòa nhà, hóa đơn, sự cố & cư dân
                     </p>
                   </div>
@@ -775,16 +775,16 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => selectRole('TENANT')}
-                  className="w-full p-3.5 bg-white hover:bg-slate-50 border border-[#E2E8F0] hover:border-amber-300 rounded-[18px] shadow-[0_4px_10px_rgba(15,23,42,0.03)] hover:shadow-md transition-all duration-200 flex items-center gap-3.5 text-left group cursor-pointer active:scale-[0.98]"
+                  className="w-full p-3 bg-white hover:bg-slate-50 border border-[#E2E8F0] hover:border-amber-300 rounded-[16px] shadow-[0_3px_8px_rgba(15,23,42,0.03)] hover:shadow-md transition-all duration-200 flex items-center gap-3 text-left group cursor-pointer active:scale-[0.98]"
                 >
-                  <div className="w-11 h-11 rounded-[14px] bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center text-[#D97706] flex-shrink-0 group-hover:scale-105 transition-transform">
-                    <Users className="w-6 h-6" />
+                  <div className="w-10 h-10 rounded-[12px] bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center text-[#D97706] flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Users className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[14.5px] font-bold text-[#0F172A] group-hover:text-amber-600 transition-colors">
+                    <h3 className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-amber-600 transition-colors">
                       Cư dân / Người thuê
                     </h3>
-                    <p className="text-[11px] text-[#64748B] truncate mt-0.5">
+                    <p className="text-[10.5px] text-[#64748B] truncate mt-0.5">
                       Xem hóa đơn, báo sự cố & tiện ích phòng
                     </p>
                   </div>
@@ -794,7 +794,7 @@ function LoginForm() {
             </div>
           ) : (
             /* ─── BƯỚC 2: FORM ĐĂNG NHẬP / ĐĂNG KÝ ─── */
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Header with Back button & Role badge */}
               <div className="flex items-center justify-between">
                 <button
@@ -808,14 +808,14 @@ function LoginForm() {
                       setErrorMessage(null);
                     }
                   }}
-                  className="p-1.5 rounded-xl bg-[#F1F5F9] hover:bg-slate-200 text-[#475569] transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg bg-[#F1F5F9] hover:bg-slate-200 text-[#475569] transition-colors cursor-pointer"
                   title="Quay lại"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-3.5 h-3.5" />
                 </button>
 
                 <div
-                  className={`px-2.5 py-1 rounded-lg border text-[12px] font-extrabold ${
+                  className={`px-2.5 py-0.5 rounded-md border text-[11px] font-extrabold ${
                     isOwner
                       ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]'
                       : 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]'
@@ -827,16 +827,16 @@ function LoginForm() {
 
               {/* Segmented Tab Switcher: Đăng nhập vs Đăng ký bằng SĐT */}
               {regStep === 'INPUT_FORM' && (
-                <div className="flex bg-[#F1F5F9] p-1 rounded-xl border border-slate-200/70">
+                <div className="flex bg-[#F1F5F9] p-0.5 rounded-xl border border-slate-200/70">
                   <button
                     type="button"
                     onClick={() => {
                       setAuthMode('LOGIN');
                       setErrorMessage(null);
                     }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`flex-1 py-1.5 text-[11.5px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
                       authMode === 'LOGIN'
-                        ? 'bg-white text-slate-900 shadow-sm'
+                        ? 'bg-white text-slate-900 shadow-xs'
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
@@ -849,15 +849,15 @@ function LoginForm() {
                       setAuthMode('REGISTER');
                       setErrorMessage(null);
                     }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`flex-1 py-1.5 text-[11.5px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
                       authMode === 'REGISTER'
                         ? isOwner
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-amber-600 text-white shadow-sm'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-amber-600 text-white shadow-xs'
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <UserPlus className="w-3.5 h-3.5" />
+                    <UserPlus className="w-3 h-3" />
                     <span>Đăng ký SMS OTP</span>
                   </button>
                 </div>
@@ -865,20 +865,20 @@ function LoginForm() {
 
               {/* ─── TAB 1: FORM ĐĂNG NHẬP ─── */}
               {authMode === 'LOGIN' ? (
-                <form onSubmit={handleLogin} className="space-y-3.5 pt-1">
+                <form onSubmit={handleLogin} className="space-y-2.5 pt-0.5">
                   {/* Phone Input */}
                   <div>
-                    <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
+                    <label className="block text-[11px] font-bold text-[#334155] mb-1">
                       Số điện thoại đăng nhập
                     </label>
                     <div className="relative">
-                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748B]" />
                       <input
                         type="tel"
                         placeholder="0388430402"
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-9 pr-3.5 py-2 text-[#0F172A] placeholder-[#94A3B8] text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 ${
                           isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
                         } transition-all`}
                         required
@@ -888,10 +888,10 @@ function LoginForm() {
 
                   {/* Building Code & Room Code Input (Tenant only) */}
                   {!isOwner && (
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
-                          <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                        <label className="block text-[11px] font-bold text-[#334155] mb-1 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-blue-600" />
                           <span>Mã tòa *</span>
                         </label>
                         <div className="relative">
@@ -901,15 +901,15 @@ function LoginForm() {
                             maxLength={5}
                             value={buildingCode}
                             onChange={(e) => setBuildingCode(e.target.value.toUpperCase())}
-                            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
+                            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-2.5 py-1.5 text-[#0F172A] placeholder-[#94A3B8] text-xs font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
                             required
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[12px] font-bold text-[#334155] mb-1.5 flex items-center gap-1">
-                          <Key className="w-3.5 h-3.5 text-amber-600" />
+                        <label className="block text-[11px] font-bold text-[#334155] mb-1 flex items-center gap-1">
+                          <Key className="w-3 h-3 text-amber-600" />
                           <span>Mã phòng *</span>
                         </label>
                         <div className="relative">
@@ -919,7 +919,7 @@ function LoginForm() {
                             maxLength={5}
                             value={roomCode}
                             onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
+                            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-2.5 py-1.5 text-[#0F172A] placeholder-[#94A3B8] text-xs font-mono font-bold uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 transition-all text-center tracking-wider"
                             required
                           />
                         </div>
@@ -929,17 +929,17 @@ function LoginForm() {
 
                   {/* Password Input */}
                   <div>
-                    <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
+                    <label className="block text-[11px] font-bold text-[#334155] mb-1">
                       Mật khẩu
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748B]" />
                       <input
                         type={obscurePassword ? 'password' : 'text'}
                         placeholder="••••••••"
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-10 pr-10 py-2.5 text-[#0F172A] placeholder-[#94A3B8] text-sm font-medium focus:outline-none focus:bg-white focus:ring-2 ${
+                        className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-9 pr-9 py-2 text-[#0F172A] placeholder-[#94A3B8] text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 ${
                           isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
                         } transition-all`}
                         required
@@ -949,16 +949,16 @@ function LoginForm() {
                         onClick={() => setObscurePassword(!obscurePassword)}
                         title={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
                         aria-label={obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] p-1 rounded-md transition-colors cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] p-0.5 rounded transition-colors cursor-pointer"
                       >
-                        {obscurePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {obscurePassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
 
                   {/* Error Banner */}
                   {errorMessage && (
-                    <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-[12px] font-medium flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-[11px] font-medium flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                       <span>{errorMessage}</span>
                     </div>
@@ -968,7 +968,7 @@ function LoginForm() {
                   <button
                     type="submit"
                     disabled={loading || isSuccess}
-                    className={`w-full h-12 rounded-[14px] text-white font-extrabold text-[14.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-lg active:scale-[0.97] mt-2 ${
+                    className={`w-full h-10 sm:h-10.5 rounded-[12px] text-white font-extrabold text-[13.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-md active:scale-[0.97] mt-1.5 ${
                       isSuccess
                         ? 'bg-gradient-to-r from-[#10B981] to-[#059669] shadow-emerald-500/30'
                         : isOwner
@@ -977,28 +977,28 @@ function LoginForm() {
                     }`}
                   >
                     {isSuccess ? (
-                      <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
-                        <div className="w-5 h-5 rounded-full bg-white text-[#059669] flex items-center justify-center">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-200">
+                        <div className="w-4 h-4 rounded-full bg-white text-[#059669] flex items-center justify-center">
+                          <Check className="w-3 h-3 stroke-[3]" />
                         </div>
                         <span>Đăng nhập thành công!</span>
                       </div>
                     ) : loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>Đang xác thực...</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span>Đăng nhập vào hệ thống</span>
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </div>
                     )}
                   </button>
 
                   {/* Switch to Register link */}
-                  <div className="text-center pt-1">
-                    <p className="text-[12px] text-slate-500">
+                  <div className="text-center pt-0.5">
+                    <p className="text-[11px] text-slate-500">
                       Chưa có tài khoản?{' '}
                       <button
                         type="button"
@@ -1017,23 +1017,23 @@ function LoginForm() {
                   </div>
 
                   {/* Social Login Divider */}
-                  <div className="relative flex py-1.5 items-center">
+                  <div className="relative flex py-1 items-center">
                     <div className="flex-grow border-t border-slate-200"></div>
-                    <span className="flex-shrink mx-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <span className="flex-shrink mx-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       Hoặc tiếp tục với
                     </span>
                     <div className="flex-grow border-t border-slate-200"></div>
                   </div>
 
                   {/* Social Login Buttons */}
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={handleGoogleLogin}
                       disabled={loading || isSuccess}
-                      className="h-11 px-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-slate-700 shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                      className="h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-[12px] font-bold text-slate-700 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
                     >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                         <path
                           fill="#4285F4"
                           d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -1058,9 +1058,9 @@ function LoginForm() {
                       type="button"
                       onClick={handleFacebookLogin}
                       disabled={loading || isSuccess}
-                      className="h-11 px-3 bg-[#1877F2]/5 hover:bg-[#1877F2]/10 border border-[#1877F2]/20 hover:border-[#1877F2]/40 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-[#1877F2] shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                      className="h-9 px-2.5 bg-[#1877F2]/5 hover:bg-[#1877F2]/10 border border-[#1877F2]/20 hover:border-[#1877F2]/40 rounded-xl flex items-center justify-center gap-1.5 text-[12px] font-bold text-[#1877F2] shadow-xs transition-all active:scale-[0.98] cursor-pointer"
                     >
-                      <svg className="w-4 h-4 fill-[#1877F2]" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 fill-[#1877F2]" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                       </svg>
                       <span>Facebook</span>
@@ -1617,7 +1617,7 @@ function LoginForm() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[11.5px] text-[#94A3B8] font-medium mt-5">
+        <p className="text-center text-[10.5px] text-[#94A3B8] font-medium mt-3">
           © 2026 REASY • Nền tảng quản lý phòng trọ thế hệ mới
         </p>
       </div>
