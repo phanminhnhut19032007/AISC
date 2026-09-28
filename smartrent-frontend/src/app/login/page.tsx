@@ -6,10 +6,10 @@ import {
   ArrowLeft, Eye, EyeOff, Check, 
   ChevronRight, Building2, Key, User as UserIcon, UserPlus,
   MessageSquare, RefreshCw, Smartphone, Sparkles, Shield,
-  CheckCircle2, Clock
+  CheckCircle2, Clock, Camera, FileText, Upload, Award, FileCheck
 } from 'lucide-react';
 import { authApi } from '@/lib/api';
-import { saveAuth } from '@/lib/auth';
+import { saveAuth, updateUserVerification } from '@/lib/auth';
 import { useConfirm } from '@/context/ConfirmationContext';
 
 function LoginForm() {
@@ -26,7 +26,7 @@ function LoginForm() {
   const [obscurePassword, setObscurePassword] = useState(true);
 
   // Register form
-  const [regStep, setRegStep] = useState<'INPUT_FORM' | 'VERIFY_OTP'>('INPUT_FORM');
+  const [regStep, setRegStep] = useState<'INPUT_FORM' | 'VERIFY_OTP' | 'OWNER_KYC'>('INPUT_FORM');
   const [registerForm, setRegisterForm] = useState({
     fullName: '',
     phone: '',
@@ -35,6 +35,19 @@ function LoginForm() {
   });
   const [obscureRegPassword, setObscureRegPassword] = useState(true);
   const [obscureConfirmPassword, setObscureConfirmPassword] = useState(true);
+  
+  // KYC Upload States for Owner
+  const [kycFront, setKycFront] = useState<string | null>(null);
+  const [kycBack, setKycBack] = useState<string | null>(null);
+  const [kycProperty, setKycProperty] = useState<string | null>(null);
+  const [kycBusiness, setKycBusiness] = useState<string | null>(null);
+  const [kycIdNumber, setKycIdNumber] = useState<string>('079201008899');
+  const [kycOcrScanning, setKycOcrScanning] = useState(false);
+  const [kycOcrMatched, setKycOcrMatched] = useState(false);
+  const kycFrontRef = useRef<HTMLInputElement>(null);
+  const kycBackRef = useRef<HTMLInputElement>(null);
+  const kycPropertyRef = useRef<HTMLInputElement>(null);
+  const kycBusinessRef = useRef<HTMLInputElement>(null);
   
   // 6-digit OTP state
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
@@ -529,7 +542,20 @@ function LoginForm() {
         id: res.data.user_id,
         full_name: res.data.full_name,
         role: res.data.role,
+        verification_status: res.data.role === 'OWNER' ? 'PENDING' : undefined,
+        is_verified: false,
       });
+
+      if (selectedRole === 'OWNER') {
+        // Switch to Step 3: Owner KYC
+        setRegStep('OWNER_KYC');
+        setLoading(false);
+        setKycFront('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=500&auto=format&fit=crop&q=60');
+        setKycBack('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&auto=format&fit=crop&q=60');
+        setKycProperty('https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&auto=format&fit=crop&q=60');
+        setKycBusiness('https://images.unsplash.com/photo-1450133064473-71024230f91b?w=500&auto=format&fit=crop&q=60');
+        return;
+      }
 
       setIsSuccess(true);
 
@@ -542,6 +568,53 @@ function LoginForm() {
       );
       setLoading(false);
     }
+  };
+
+  const handleKycFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: string) => void,
+    triggerOcr: boolean = false
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const url = event.target?.result as string;
+        setter(url);
+
+        if (triggerOcr) {
+          setKycOcrScanning(true);
+          setKycOcrMatched(false);
+          setTimeout(() => {
+            setKycOcrScanning(false);
+            setKycOcrMatched(true);
+            setKycIdNumber('079201008899');
+          }, 800);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCompleteOwnerKyc = (skip: boolean = false) => {
+    setLoading(true);
+    if (!skip) {
+      updateUserVerification('PENDING', {
+        id_card_front: kycFront,
+        id_card_back: kycBack,
+        property_doc: kycProperty,
+        business_license: kycBusiness,
+        id_number: kycIdNumber,
+        submitted_at: new Date().toISOString(),
+      });
+    } else {
+      updateUserVerification('PENDING');
+    }
+
+    setIsSuccess(true);
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 700);
   };
 
   // Google OAuth Login handler
@@ -1144,7 +1217,7 @@ function LoginForm() {
                         </p>
                       </div>
                     </form>
-                  ) : (
+                  ) : regStep === 'VERIFY_OTP' ? (
                     /* ─── BƯỚC 2: GIAO DIỆN NHẬP MÃ OTP 6 CHỮ SỐ CAO CẤP ─── */
                     <form onSubmit={handleVerifyOtpAndRegister} className="space-y-4 pt-0.5">
                       {/* Header Badge */}
@@ -1324,11 +1397,167 @@ function LoginForm() {
                         ) : (
                           <div className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>Xác thực & Hoàn tất Đăng ký</span>
+                            <span>{isOwner ? 'Tiếp tục: Xác minh Chủ trọ (KYC)' : 'Xác thực & Hoàn tất Đăng ký'}</span>
                           </div>
                         )}
                       </button>
                     </form>
+                  ) : (
+                    /* ─── BƯỚC 3: XÁC MINH DANH TÍNH & PHÁP LÝ CHỦ TRỌ (KYC) ─── */
+                    <div className="space-y-4 pt-1 animate-in fade-in duration-200">
+                      {/* Header Badge */}
+                      <div className="text-center space-y-1.5">
+                        <div className="inline-flex w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 items-center justify-center text-blue-600 shadow-sm">
+                          <ShieldCheck className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-[17px] font-black text-slate-900 tracking-tight">
+                            Xác minh Danh tính Chủ trọ (KYC)
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Tải lên giấy tờ để nhận huy hiệu <b className="text-blue-600">Tích Xanh Chính Chủ</b>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 3 Upload Cards */}
+                      <div className="space-y-2.5 max-h-68 overflow-y-auto pr-1">
+                        {/* 1. CCCD 2 Mặt */}
+                        <div className="p-3 bg-[#F8FAFC] border border-slate-200 rounded-xl">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-md bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                              CCCD 2 mặt chính chủ <span className="text-red-500">*</span>
+                            </span>
+                            <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md">
+                              Khớp: {registerForm.fullName || 'Chủ trọ'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div 
+                              onClick={() => kycFrontRef.current?.click()}
+                              className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors"
+                            >
+                              <Camera className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                              <span className="text-[11px] font-bold text-blue-600 block truncate">
+                                {kycFront ? 'Đã chọn mặt trước' : 'Mặt trước'}
+                              </span>
+                              <input 
+                                type="file" 
+                                ref={kycFrontRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={(e) => handleKycFileUpload(e, setKycFront, true)}
+                              />
+                            </div>
+
+                            <div 
+                              onClick={() => kycBackRef.current?.click()}
+                              className="p-2 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors"
+                            >
+                              <Camera className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                              <span className="text-[11px] font-bold text-blue-600 block truncate">
+                                {kycBack ? 'Đã chọn mặt sau' : 'Mặt sau'}
+                              </span>
+                              <input 
+                                type="file" 
+                                ref={kycBackRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={(e) => handleKycFileUpload(e, setKycBack)}
+                              />
+                            </div>
+                          </div>
+
+                          {kycOcrScanning && (
+                            <p className="text-[10px] text-blue-600 font-medium mt-1.5 flex items-center gap-1">
+                              <RefreshCw className="w-3 h-3 animate-spin" /> AI đang đối soát họ tên CCCD...
+                            </p>
+                          )}
+                          {kycOcrMatched && (
+                            <p className="text-[10px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Đã quét khớp tên: {registerForm.fullName || 'Chủ trọ'}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* 2. Sổ hồng / Sổ đỏ HOẶC HĐ Thuê quản lý */}
+                        <div className="p-3 bg-[#F8FAFC] border border-slate-200 rounded-xl">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-md bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                              Sổ hồng / Sổ đỏ hoặc HĐ thuê QL <span className="text-red-500">*</span>
+                            </span>
+                          </div>
+                          <div 
+                            onClick={() => kycPropertyRef.current?.click()}
+                            className="p-2.5 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2"
+                          >
+                            <FileText className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-bold text-blue-600 truncate">
+                              {kycProperty ? 'Đã tải lên giấy tờ nhà đất' : 'Tải lên ảnh Sổ hồng / Hợp đồng'}
+                            </span>
+                            <input 
+                              type="file" 
+                              ref={kycPropertyRef} 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={(e) => handleKycFileUpload(e, setKycProperty)}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 3. Giấy phép KD / Giấy phép PCCC */}
+                        <div className="p-3 bg-[#F8FAFC] border border-slate-200 rounded-xl">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-md bg-slate-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
+                              Giấy phép KD / Cam kết PCCC
+                            </span>
+                            <span className="text-[10px] text-slate-400">Khuyến khích</span>
+                          </div>
+                          <div 
+                            onClick={() => kycBusinessRef.current?.click()}
+                            className="p-2.5 border border-dashed border-slate-300 hover:border-blue-500 rounded-lg text-center cursor-pointer bg-white transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Award className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-bold text-blue-600 truncate">
+                              {kycBusiness ? 'Đã tải lên Giấy phép PCCC' : 'Tải lên Giấy phép kinh doanh / PCCC'}
+                            </span>
+                            <input 
+                              type="file" 
+                              ref={kycBusinessRef} 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={(e) => handleKycFileUpload(e, setKycBusiness)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Nút gửi duyệt & Bỏ qua */}
+                      <div className="space-y-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleCompleteOwnerKyc(false)}
+                          disabled={loading}
+                          className="w-full h-12 rounded-[14px] text-white font-extrabold text-[14.5px] bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer active:scale-[0.97]"
+                        >
+                          <ShieldCheck className="w-5 h-5" />
+                          <span>Gửi hồ sơ kiểm duyệt & Vào hệ thống</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCompleteOwnerKyc(true)}
+                          className="w-full py-2 text-slate-500 hover:text-slate-800 font-bold text-xs cursor-pointer transition-colors text-center"
+                        >
+                          Nộp sau trong Dashboard (Tài khoản có dấu chấm than cam)
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

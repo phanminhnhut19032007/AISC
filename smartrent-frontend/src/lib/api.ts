@@ -36,12 +36,27 @@ api.interceptors.response.use(
 );
 
 // ---- Types ----
+export interface KycDocument {
+  id_card_front?: string;
+  id_card_back?: string;
+  property_doc?: string;
+  business_license?: string;
+  id_number?: string;
+  submitted_at?: string;
+  approved_at?: string;
+}
+
+export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+
 export interface User {
   id: string;
   full_name: string;
   phone: string;
   role: string;
   email?: string;
+  verification_status?: VerificationStatus;
+  is_verified?: boolean;
+  kyc_documents?: KycDocument;
 }
 
 export interface TokenResponse {
@@ -49,6 +64,8 @@ export interface TokenResponse {
   user_id: string;
   role: string;
   full_name: string;
+  verification_status?: VerificationStatus;
+  is_verified?: boolean;
 }
 
 export interface Building {

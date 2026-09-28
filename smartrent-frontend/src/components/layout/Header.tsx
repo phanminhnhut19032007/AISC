@@ -1,13 +1,14 @@
-'use client';
 import { 
   Bell, User, Wrench, FileText, ShoppingBag, MessageSquare, Check, Menu, 
-  UserCog, LogOut, X, Phone, Mail, Lock, KeyRound, Eye, EyeOff, Shield, RotateCcw, ChevronDown 
+  UserCog, LogOut, X, Phone, Mail, Lock, KeyRound, Eye, EyeOff, Shield, RotateCcw, ChevronDown,
+  ShieldCheck, AlertCircle, CheckCircle2, Clock, Sparkles
 } from 'lucide-react';
-import { getUser, clearAuth } from '@/lib/auth';
+import { getUser, clearAuth, UserAuthData } from '@/lib/auth';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ticketsApi, invoicesApi, buildingsApi, authApi, Room } from '@/lib/api';
 import { useConfirm } from '@/context/ConfirmationContext';
+import KycVerificationModal from '@/components/kyc/KycVerificationModal';
 
 interface NotificationItem {
   id: string;
@@ -22,8 +23,11 @@ interface NotificationItem {
 export default function Header({ title }: { title: string }) {
   const router = useRouter();
   const { confirm, showAlert } = useConfirm();
-  const [user, setUser] = useState<{ id: string; role: string; full_name: string; phone?: string; email?: string } | null>(null);
+  const [user, setUser] = useState<UserAuthData | null>(null);
   const [roomNumber, setRoomNumber] = useState<string>('');
+  
+  // KYC Verification Modal state
+  const [showKycModal, setShowKycModal] = useState(false);
   
   // Notification states
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -204,12 +208,16 @@ export default function Header({ title }: { title: string }) {
     try {
       const res = await authApi.me();
       if (res.data) {
-        const updated = {
+        const local = getUser();
+        const updated: UserAuthData = {
           id: res.data.id,
           full_name: res.data.full_name,
           role: res.data.role,
           phone: res.data.phone,
-          email: res.data.email
+          email: res.data.email,
+          verification_status: local?.verification_status || (res.data.role === 'OWNER' ? 'PENDING' : undefined),
+          is_verified: local?.is_verified ?? (local?.verification_status === 'VERIFIED'),
+          kyc_documents: local?.kyc_documents,
         };
         setUser(updated);
         localStorage.setItem('smartrent_user', JSON.stringify(updated));
@@ -232,6 +240,13 @@ export default function Header({ title }: { title: string }) {
   useEffect(() => {
     loadUserData();
 
+    // Listen to verification updates from modal/other tabs
+    const handleUserUpdated = () => {
+      const u = getUser();
+      if (u) setUser(u);
+    };
+    window.addEventListener('smartrent_user_updated', handleUserUpdated);
+
     const interval = setInterval(() => {
       const currentUser = getUser();
       if (currentUser) {
@@ -239,7 +254,10 @@ export default function Header({ title }: { title: string }) {
       }
     }, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('smartrent_user_updated', handleUserUpdated);
+      clearInterval(interval);
+    };
   }, []);
 
   // Close dropdowns on outside click
@@ -580,42 +598,168 @@ export default function Header({ title }: { title: string }) {
         <div className="relative" ref={userMenuRef}>
           <button
             onClick={handleUserMenuToggle}
-            className={`flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded-xl border transition-all cursor-pointer ${
+            className={`flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded-xl border transition-all cursor-pointer relative ${
               showUserMenu 
                 ? 'bg-slate-100 border-slate-300 shadow-sm' 
                 : 'hover:bg-slate-50 border-transparent hover:border-slate-200'
             }`}
             title="Tài khoản cá nhân"
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-sm text-white font-bold text-xs">
-              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+            {/* Avatar with Status Indicator */}
+            <div className="relative flex-shrink-0">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-sm text-white font-bold text-xs">
+                {user?.full_name ? user.full_name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+              </div>
+
+              {/* Chỉ báo trạng thái Xác minh danh tính cho Chủ trọ */}
+              {user?.role === 'OWNER' && (
+                user?.verification_status === 'VERIFIED' ? (
+                  <span 
+                    className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm" 
+                    title="Chủ trọ đã xác minh chính chủ (Tích xanh)"
+                  >
+                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                  </span>
+                ) : (
+                  <span 
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white font-black text-[10px] rounded-full flex items-center justify-center border-2 border-white shadow-sm animate-pulse" 
+                    title="Hồ sơ chủ trọ đang chờ duyệt xác minh"
+                  >
+                    !
+                  </span>
+                )
+              )}
             </div>
+
             <div className="hidden md:block text-left">
-              <p className="text-xs font-bold text-slate-800 leading-tight max-w-[130px] truncate">{getDisplayName()}</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-bold text-slate-800 leading-tight max-w-[130px] truncate">{getDisplayName()}</p>
+                {user?.role === 'OWNER' && user?.verification_status === 'VERIFIED' && (
+                  <span title="Đã xác minh chính chủ" className="flex-shrink-0 inline-flex">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                  </span>
+                )}
+              </div>
               <p className="text-[10px] text-slate-400 font-semibold">{getDisplayRole()}</p>
             </div>
             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180 text-blue-600' : ''}`} />
           </button>
 
-          {/* Floating User Menu Popover (Matching Design in media_1788608015491.png) */}
+          {/* Floating User Menu Popover */}
           {showUserMenu && (
-            <div className="absolute right-0 mt-2.5 w-72 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 mt-2.5 w-76 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150">
               
               {/* User Header Summary */}
-              <div className="p-4 bg-slate-900 text-white flex items-center gap-3.5">
-                <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-lg text-white shadow-md flex-shrink-0">
-                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+              <div className="p-4 bg-slate-900 text-white flex items-center gap-3.5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
+                <div className="relative flex-shrink-0">
+                  <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-lg text-white shadow-md">
+                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  {user?.role === 'OWNER' && user?.verification_status === 'VERIFIED' && (
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center border border-white">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </span>
+                  )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-extrabold text-sm text-white truncate">{getDisplayName()}</h4>
-                  <span className="inline-block text-[10px] font-semibold text-slate-300 bg-white/10 px-2 py-0.5 rounded-md mt-1">
-                    {getDisplayRole()}
-                  </span>
+
+                <div className="min-w-0 flex-1 relative z-10">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-extrabold text-sm text-white truncate">{getDisplayName()}</h4>
+                    {user?.role === 'OWNER' && user?.verification_status === 'VERIFIED' && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="inline-block text-[10px] font-semibold text-slate-300 bg-white/10 px-2 py-0.5 rounded-md">
+                      {getDisplayRole()}
+                    </span>
+                    {user?.role === 'OWNER' && (
+                      user?.verification_status === 'VERIFIED' ? (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                          <Check className="w-2.5 h-2.5" /> Đã xác minh
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30 animate-pulse">
+                          <Clock className="w-2.5 h-2.5" /> Chờ duyệt
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
 
+              {/* Status Banner cho Chủ trọ */}
+              {user?.role === 'OWNER' && (
+                user?.verification_status === 'VERIFIED' ? (
+                  <div className="m-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-extrabold text-blue-950 truncate">Đã xác minh chính chủ</p>
+                        <p className="text-[10px] text-blue-700 truncate">CCCD & Sổ hồng đã phê duyệt</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setShowUserMenu(false); setShowKycModal(true); }}
+                      className="text-[10px] font-black text-blue-700 hover:text-blue-900 bg-white border border-blue-200 px-2 py-1 rounded-lg transition-colors flex-shrink-0 shadow-sm"
+                    >
+                      Xem hồ sơ
+                    </button>
+                  </div>
+                ) : (
+                  <div className="m-2 p-2.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center flex-shrink-0 font-black text-xs shadow-sm">
+                        !
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-extrabold text-amber-950 truncate flex items-center gap-1">
+                          Hồ sơ đang chờ duyệt
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                        </p>
+                        <p className="text-[10px] text-amber-700 truncate">Đang rà soát CCCD & Sổ hồng</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setShowUserMenu(false); setShowKycModal(true); }}
+                      className="text-[10px] font-extrabold bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded-lg transition-transform active:scale-95 shadow-sm flex-shrink-0"
+                    >
+                      Kiểm tra
+                    </button>
+                  </div>
+                )
+              )}
+
               {/* Action Buttons */}
               <div className="p-2 space-y-1">
+                {/* 0. Xác minh danh tính & Pháp lý (Dành cho Chủ trọ) */}
+                {user?.role === 'OWNER' && (
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowKycModal(true);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50/70 transition-colors text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                      <span>Xác minh danh tính & Sổ hồng</span>
+                    </div>
+                    {user?.verification_status === 'VERIFIED' ? (
+                      <span className="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                        <Check className="w-3 h-3" /> Tích Xanh
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                        <Clock className="w-3 h-3" /> Chờ duyệt
+                      </span>
+                    )}
+                  </button>
+                )}
+
                 {/* 1. Chỉnh sửa thông tin cá nhân */}
                 <button
                   onClick={handleOpenEditProfile}
@@ -849,6 +993,15 @@ export default function Header({ title }: { title: string }) {
           </div>
         </div>
       )}
+
+      {/* 4. KYC VERIFICATION MODAL */}
+      <KycVerificationModal
+        isOpen={showKycModal}
+        onClose={() => setShowKycModal(false)}
+        onVerifiedChange={() => {
+          loadUserData();
+        }}
+      />
     </header>
   );
 }
