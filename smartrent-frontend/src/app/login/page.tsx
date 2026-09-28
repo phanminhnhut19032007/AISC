@@ -858,7 +858,7 @@ function LoginForm() {
                     }`}
                   >
                     <UserPlus className="w-3 h-3" />
-                    <span>Đăng ký SMS OTP</span>
+                    <span>Đăng ký bằng số điện thoại</span>
                   </button>
                 </div>
               )}
@@ -1011,7 +1011,7 @@ function LoginForm() {
                           isOwner ? 'text-blue-600' : 'text-amber-600'
                         }`}
                       >
-                        Đăng ký bằng SMS OTP
+                        Đăng ký bằng số điện thoại
                       </button>
                     </p>
                   </div>
@@ -1098,7 +1098,7 @@ function LoginForm() {
                       {/* Số điện thoại */}
                       <div>
                         <label className="block text-[12px] font-bold text-[#334155] mb-1">
-                          Số điện thoại nhận SMS OTP <span className="text-red-500">*</span>
+                          Số điện thoại đăng ký <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
