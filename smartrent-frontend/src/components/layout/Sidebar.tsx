@@ -3,15 +3,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Building2, LayoutDashboard,
-  FileText, Wrench, LogOut, ShoppingBag, MessageSquare, X, Siren, AlertOctagon
+  FileText, Wrench, LogOut, ShoppingBag, MessageSquare, X, Siren, AlertOctagon, ShieldCheck
 } from 'lucide-react';
 import { clearAuth, getUser } from '@/lib/auth';
+import { getKycApplications } from '@/lib/kycAdmin';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/dashboard/buildings', label: 'Tòa nhà', icon: Building2 },
+  { href: '/dashboard/admin/kyc', label: 'Duyệt Hồ Sơ KYC', icon: ShieldCheck, isAdmin: true },
   { href: '/dashboard/invoices', label: 'Hóa đơn', icon: FileText },
   { href: '/dashboard/tickets', label: 'Bảo trì & Sửa chữa', icon: Wrench },
   { href: '/dashboard/unipack', label: 'Tiện ích UniPack', icon: ShoppingBag },
@@ -24,18 +26,34 @@ export default function Sidebar() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingKycCount, setPendingKycCount] = useState<number>(0);
+
+  const loadKycCount = () => {
+    try {
+      const apps = getKycApplications();
+      setPendingKycCount(apps.filter((a) => a.status === 'PENDING').length);
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     setUser(getUser());
+    loadKycCount();
 
     const handleToggle = () => setMobileOpen((prev) => !prev);
     const handleClose = () => setMobileOpen(false);
 
     window.addEventListener('toggle-mobile-sidebar', handleToggle);
     window.addEventListener('close-mobile-sidebar', handleClose);
+    window.addEventListener('reasy_admin_kyc_updated', loadKycCount);
+    window.addEventListener('smartrent_user_updated', loadKycCount);
+
     return () => {
       window.removeEventListener('toggle-mobile-sidebar', handleToggle);
       window.removeEventListener('close-mobile-sidebar', handleClose);
+      window.removeEventListener('reasy_admin_kyc_updated', loadKycCount);
+      window.removeEventListener('smartrent_user_updated', loadKycCount);
     };
   }, []);
 
@@ -52,8 +70,8 @@ export default function Sidebar() {
   const filteredNavItems = navItems
     .filter((item) => {
       if (user?.role === 'TENANT') {
-        // Tenant doesn't see buildings management tab in sidebar
-        return item.href !== '/dashboard/buildings';
+        // Tenant doesn't see buildings and KYC review tab
+        return item.href !== '/dashboard/buildings' && item.href !== '/dashboard/admin/kyc';
       }
       return true;
     })
@@ -142,14 +160,21 @@ export default function Sidebar() {
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   active
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                <span className="truncate">{label}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                  <span className="truncate">{label}</span>
+                </div>
+                {href === '/dashboard/admin/kyc' && pendingKycCount > 0 && (
+                  <span className="min-w-5 h-5 px-1.5 bg-amber-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                    {pendingKycCount}
+                  </span>
+                )}
               </Link>
             );
           })}
