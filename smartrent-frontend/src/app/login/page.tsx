@@ -62,10 +62,14 @@ function LoginForm() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Check query params if mode is register
+  // Check query params if mode is register or admin
   useEffect(() => {
     if (searchParams.get('mode') === 'register' || searchParams.get('tab') === 'register') {
       setAuthMode('REGISTER');
+    }
+    if (searchParams.get('role') === 'admin' || searchParams.get('admin') === 'true' || searchParams.get('portal') === 'admin') {
+      setSelectedRole('SUPERADMIN');
+      setAuthMode('LOGIN');
     }
   }, [searchParams]);
 
@@ -821,31 +825,6 @@ function LoginForm() {
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[#94A3B8] group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                </button>
-
-                {/* Option 3: Quản trị viên Hệ thống (Admin) */}
-                <button
-                  type="button"
-                  onClick={() => selectRole('SUPERADMIN')}
-                  className="w-full p-3 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white rounded-[16px] shadow-[0_4px_12px_rgba(15,23,42,0.15)] hover:shadow-lg transition-all duration-200 flex items-center gap-3 text-left group cursor-pointer active:scale-[0.98] border border-indigo-900/50"
-                >
-                  <div className="w-10 h-10 rounded-[12px] bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-indigo-300 flex-shrink-0 group-hover:scale-105 transition-transform">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-[13.5px] font-bold text-white group-hover:text-indigo-200 transition-colors">
-                        Quản trị viên Hệ thống
-                      </h3>
-                      <span className="px-1.5 py-0.2 bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 rounded text-[9px] font-black">
-                        ADMIN
-                      </span>
-                    </div>
-                    <p className="text-[10.5px] text-slate-300 truncate mt-0.5">
-                      Duyệt hồ sơ KYC chủ trọ & quản trị toàn hệ thống
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-indigo-300 group-hover:text-white group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </button>
               </div>
             </div>

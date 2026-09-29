@@ -1,0 +1,5 @@
+import { redirect } from 'next/navigation';
+
+export default function AdminKycRedirect() {
+  redirect('/dashboard/admin/kyc');
+}
