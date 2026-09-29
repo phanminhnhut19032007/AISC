@@ -9,7 +9,7 @@ import {
   CheckCircle2, Clock, Camera, FileText, Upload, Award, FileCheck
 } from 'lucide-react';
 import { authApi } from '@/lib/api';
-import { saveAuth, updateUserVerification } from '@/lib/auth';
+import { saveAuth, updateUserVerification, UserAuthData } from '@/lib/auth';
 import { useConfirm } from '@/context/ConfirmationContext';
 
 function LoginForm() {
@@ -17,7 +17,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { showAlert } = useConfirm();
   const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
-  const [selectedRole, setSelectedRole] = useState<'' | 'OWNER' | 'TENANT'>('');
+  const [selectedRole, setSelectedRole] = useState<'' | 'OWNER' | 'TENANT' | 'SUPERADMIN'>('');
   
   // Login form
   const [form, setForm] = useState({ phone: '', password: '' });
@@ -256,11 +256,14 @@ function LoginForm() {
     };
   }, []);
 
-  const selectRole = (role: 'OWNER' | 'TENANT') => {
+  const selectRole = (role: 'OWNER' | 'TENANT' | 'SUPERADMIN') => {
     setSelectedRole(role);
     setErrorMessage(null);
     setForm({ phone: '', password: '' });
     setRegStep('INPUT_FORM');
+    if (role === 'SUPERADMIN') {
+      setAuthMode('LOGIN');
+    }
     if (role === 'TENANT') {
       setBuildingCode('MC892');
       setRoomCode('P101A');
@@ -302,10 +305,18 @@ function LoginForm() {
         selectedRole === 'TENANT' ? rCode : undefined
       );
 
-      if (res.data.role !== selectedRole) {
+      const isValidRole = 
+        res.data.role === selectedRole ||
+        (selectedRole === 'SUPERADMIN' && (res.data.role === 'SUPERADMIN' || res.data.role === 'ADMIN'));
+
+      if (!isValidRole) {
         setErrorMessage(
           `Tài khoản này không có quyền đăng nhập với vai trò ${
-            selectedRole === 'OWNER' ? 'Chủ trọ' : 'Người thuê'
+            selectedRole === 'SUPERADMIN'
+              ? 'Quản trị viên Hệ thống'
+              : selectedRole === 'OWNER'
+              ? 'Chủ trọ'
+              : 'Người thuê'
           }.`
         );
         setLoading(false);
@@ -327,20 +338,35 @@ function LoginForm() {
       setIsSuccess(true);
 
       setTimeout(() => {
-        router.push('/dashboard');
+        if (res.data.role === 'SUPERADMIN' || res.data.role === 'ADMIN') {
+          router.push('/dashboard/admin/kyc');
+        } else {
+          router.push('/dashboard');
+        }
       }, 700);
     } catch (err: any) {
-      // Fallback cho 2 tài khoản demo Chu tro & Minh Nhut
+      // Fallback cho 3 tài khoản: Admin, Chủ trọ & Cư dân
       if (
         phone === '0388430402' &&
-        ((selectedRole === 'OWNER' && password === 'MinhNhut1') ||
+        ((selectedRole === 'SUPERADMIN' && password === 'MinhNhut2007') ||
+          (selectedRole === 'OWNER' && password === 'MinhNhut1') ||
           (selectedRole === 'TENANT' && password === 'MinhNhut2'))
       ) {
+        const isAdminAcc = selectedRole === 'SUPERADMIN';
         const isOwnerAcc = selectedRole === 'OWNER';
-        const fallbackUser = {
-          id: isOwnerAcc ? '6b123c40-0572-4985-aa08-5d7b9abd4f76' : '3fba1d98-ec4a-4eb5-dc74-26586abc75',
-          full_name: isOwnerAcc ? 'Chu tro' : 'Minh Nhut',
+        const fallbackUser: UserAuthData = {
+          id: isAdminAcc
+            ? '00000000-0000-0000-0000-000000000001'
+            : isOwnerAcc
+            ? '6b123c40-0572-4985-aa08-5d7b9abd4f76'
+            : '3fba1d98-ec4a-4eb5-dc74-26586abc75',
+          full_name: isAdminAcc
+            ? 'Quản trị viên Minh Nhựt'
+            : isOwnerAcc
+            ? 'Chủ trọ Minh Châu'
+            : 'Minh Nhut',
           role: selectedRole,
+          verification_status: isOwnerAcc ? 'PENDING' : undefined,
         };
         saveAuth('mock_jwt_token_0388430402', fallbackUser);
 
@@ -352,7 +378,11 @@ function LoginForm() {
         setIsSuccess(true);
 
         setTimeout(() => {
-          router.push('/dashboard');
+          if (isAdminAcc) {
+            router.push('/dashboard/admin/kyc');
+          } else {
+            router.push('/dashboard');
+          }
         }, 700);
         return;
       }
@@ -698,6 +728,8 @@ function LoginForm() {
   };
 
   const isOwner = selectedRole === 'OWNER';
+  const isAdmin = selectedRole === 'SUPERADMIN';
+  const isTenant = selectedRole === 'TENANT';
   const isOtpComplete = otpDigits.every((d) => d !== '');
 
   return (
@@ -739,33 +771,33 @@ function LoginForm() {
         {/* Pure White Modern Card */}
         <div className="w-full bg-white rounded-[24px] p-5 sm:p-5.5 border border-[#E2E8F0] shadow-[0_15px_35px_-10px_rgba(15,23,42,0.07),0_0_15px_rgba(56,189,248,0.04)] transition-all">
           {selectedRole === '' ? (
-            /* ─── BƯỚC 1: XÁC NHẬN VAI TRÒ ─── */
+            /* ─── BƯỚC 1: XÁC NHẬN VAI TRÒ (3 CỔNG RIÊNG BIỆT) ─── */
             <div className="space-y-3">
               <div className="text-center">
                 <h2 className="text-[15.5px] font-extrabold text-[#0F172A]">
                   Xác nhận vai trò truy cập
                 </h2>
                 <p className="text-[11.5px] text-[#64748B] mt-0.5">
-                  Vui lòng chọn cổng truy cập của bạn để tiếp tục
+                  Vui lòng chọn đúng vai trò của bạn để tiếp tục
                 </p>
               </div>
 
               <div className="space-y-2.5 pt-1">
-                {/* Option 1: Chủ trọ / Quản trị */}
+                {/* Option 1: Chủ trọ */}
                 <button
                   type="button"
                   onClick={() => selectRole('OWNER')}
                   className="w-full p-3 bg-white hover:bg-slate-50 border border-[#E2E8F0] hover:border-blue-300 rounded-[16px] shadow-[0_3px_8px_rgba(15,23,42,0.03)] hover:shadow-md transition-all duration-200 flex items-center gap-3 text-left group cursor-pointer active:scale-[0.98]"
                 >
                   <div className="w-10 h-10 rounded-[12px] bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#2563EB] flex-shrink-0 group-hover:scale-105 transition-transform">
-                    <ShieldCheck className="w-5 h-5" />
+                    <Building2 className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-blue-600 transition-colors">
-                      Chủ trọ / Quản trị
+                      Chủ trọ (Quản lý phòng)
                     </h3>
                     <p className="text-[10.5px] text-[#64748B] truncate mt-0.5">
-                      Quản lý tòa nhà, hóa đơn, sự cố & cư dân
+                      Quản lý tòa nhà, phòng trọ, hóa đơn & nộp KYC
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[#94A3B8] group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
@@ -782,13 +814,38 @@ function LoginForm() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-amber-600 transition-colors">
-                      Cư dân / Người thuê
+                      Cư dân / Người thuê phòng
                     </h3>
                     <p className="text-[10.5px] text-[#64748B] truncate mt-0.5">
                       Xem hóa đơn, báo sự cố & tiện ích phòng
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[#94A3B8] group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                </button>
+
+                {/* Option 3: Quản trị viên Hệ thống (Admin) */}
+                <button
+                  type="button"
+                  onClick={() => selectRole('SUPERADMIN')}
+                  className="w-full p-3 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white rounded-[16px] shadow-[0_4px_12px_rgba(15,23,42,0.15)] hover:shadow-lg transition-all duration-200 flex items-center gap-3 text-left group cursor-pointer active:scale-[0.98] border border-indigo-900/50"
+                >
+                  <div className="w-10 h-10 rounded-[12px] bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-indigo-300 flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-[13.5px] font-bold text-white group-hover:text-indigo-200 transition-colors">
+                        Quản trị viên Hệ thống
+                      </h3>
+                      <span className="px-1.5 py-0.2 bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 rounded text-[9px] font-black">
+                        ADMIN
+                      </span>
+                    </div>
+                    <p className="text-[10.5px] text-slate-300 truncate mt-0.5">
+                      Duyệt hồ sơ KYC chủ trọ & quản trị toàn hệ thống
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-indigo-300 group-hover:text-white group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </button>
               </div>
             </div>
@@ -816,17 +873,23 @@ function LoginForm() {
 
                 <div
                   className={`px-2.5 py-0.5 rounded-md border text-[11px] font-extrabold ${
-                    isOwner
+                    isAdmin
+                      ? 'bg-indigo-950 text-indigo-200 border-indigo-800'
+                      : isOwner
                       ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]'
                       : 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]'
                   }`}
                 >
-                  {isOwner ? 'Chủ trọ / Quản trị' : 'Cư dân người thuê'}
+                  {isAdmin
+                    ? '🛡️ Quản trị viên Hệ thống'
+                    : isOwner
+                    ? '🏢 Chủ trọ'
+                    : '👥 Cư dân người thuê'}
                 </div>
               </div>
 
-              {/* Segmented Tab Switcher: Đăng nhập vs Đăng ký bằng SĐT */}
-              {regStep === 'INPUT_FORM' && (
+              {/* Segmented Tab Switcher: Đăng nhập vs Đăng ký bằng SĐT (Chỉ hiển thị cho Owner/Tenant) */}
+              {!isAdmin && regStep === 'INPUT_FORM' && (
                 <div className="flex bg-[#F1F5F9] p-0.5 rounded-xl border border-slate-200/70">
                   <button
                     type="button"
@@ -879,7 +942,11 @@ function LoginForm() {
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
                         className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-9 pr-3.5 py-2 text-[#0F172A] placeholder-[#94A3B8] text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 ${
-                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                          isAdmin
+                            ? 'focus:ring-indigo-500'
+                            : isOwner
+                            ? 'focus:ring-blue-500'
+                            : 'focus:ring-amber-500'
                         } transition-all`}
                         required
                       />
@@ -887,7 +954,7 @@ function LoginForm() {
                   </div>
 
                   {/* Building Code & Room Code Input (Tenant only) */}
-                  {!isOwner && (
+                  {isTenant && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[11px] font-bold text-[#334155] mb-1 flex items-center gap-1">
@@ -940,7 +1007,11 @@ function LoginForm() {
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                         className={`w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-9 pr-9 py-2 text-[#0F172A] placeholder-[#94A3B8] text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 ${
-                          isOwner ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
+                          isAdmin
+                            ? 'focus:ring-indigo-500'
+                            : isOwner
+                            ? 'focus:ring-blue-500'
+                            : 'focus:ring-amber-500'
                         } transition-all`}
                         required
                       />
@@ -971,6 +1042,8 @@ function LoginForm() {
                     className={`w-full h-10 sm:h-10.5 rounded-[12px] text-white font-extrabold text-[13.5px] flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-md active:scale-[0.97] mt-1.5 ${
                       isSuccess
                         ? 'bg-gradient-to-r from-[#10B981] to-[#059669] shadow-emerald-500/30'
+                        : isAdmin
+                        ? 'bg-gradient-to-r from-slate-900 via-indigo-900 to-indigo-800 hover:from-slate-800 hover:to-indigo-700 shadow-indigo-500/25'
                         : isOwner
                         ? 'bg-gradient-to-r from-[#2563EB] to-[#0284C7] hover:from-[#1D4ED8] hover:to-[#0369A1] shadow-blue-500/25'
                         : 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] shadow-amber-500/25'
@@ -996,25 +1069,86 @@ function LoginForm() {
                     )}
                   </button>
 
-                  {/* Switch to Register link */}
-                  <div className="text-center pt-0.5">
-                    <p className="text-[11px] text-slate-500">
-                      Chưa có tài khoản?{' '}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAuthMode('REGISTER');
-                          setRegStep('INPUT_FORM');
-                          setErrorMessage(null);
-                        }}
-                        className={`font-bold hover:underline cursor-pointer ${
-                          isOwner ? 'text-blue-600' : 'text-amber-600'
-                        }`}
-                      >
-                        Đăng ký bằng số điện thoại
-                      </button>
-                    </p>
-                  </div>
+                  {/* Switch to Register link (For Tenant/Owner only) */}
+                  {!isAdmin && (
+                    <div className="text-center pt-0.5">
+                      <p className="text-[11px] text-slate-500">
+                        Chưa có tài khoản?{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthMode('REGISTER');
+                            setRegStep('INPUT_FORM');
+                            setErrorMessage(null);
+                          }}
+                          className={`font-bold hover:underline cursor-pointer ${
+                            isOwner ? 'text-blue-600' : 'text-amber-600'
+                          }`}
+                        >
+                          Đăng ký bằng số điện thoại
+                        </button>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Demo Account Quick-Fill Card */}
+                  {isAdmin && (
+                    <div className="mt-2.5 p-2.5 bg-indigo-950/5 border border-indigo-200 rounded-xl text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-indigo-900 flex items-center gap-1">
+                          <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" /> Tài khoản Quản trị viên (Admin)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setForm({ phone: '0388430402', password: 'MinhNhut2007' })}
+                          className="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 px-2 py-0.5 rounded-md cursor-pointer shadow-xs"
+                        >
+                          Điền nhanh
+                        </button>
+                      </div>
+                      <p className="text-[10.5px] text-indigo-700 font-mono mt-1">SĐT: 0388430402 | MK: MinhNhut2007</p>
+                    </div>
+                  )}
+
+                  {isOwner && (
+                    <div className="mt-2.5 p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5 text-blue-600" /> Tài khoản Chủ trọ
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setForm({ phone: '0388430402', password: 'MinhNhut1' })}
+                          className="text-[10px] font-extrabold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-0.5 rounded-md cursor-pointer shadow-xs"
+                        >
+                          Điền nhanh
+                        </button>
+                      </div>
+                      <p className="text-[10.5px] text-blue-700 font-mono mt-1">SĐT: 0388430402 | MK: MinhNhut1</p>
+                    </div>
+                  )}
+
+                  {isTenant && (
+                    <div className="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5 text-amber-600" /> Tài khoản Cư dân thuê phòng
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm({ phone: '0388430402', password: 'MinhNhut2' });
+                            setBuildingCode('MC892');
+                            setRoomCode('P101A');
+                          }}
+                          className="text-[10px] font-extrabold text-amber-700 hover:text-amber-900 bg-white border border-amber-200 px-2 py-0.5 rounded-md cursor-pointer shadow-xs"
+                        >
+                          Điền nhanh
+                        </button>
+                      </div>
+                      <p className="text-[10.5px] text-amber-700 font-mono mt-1">SĐT: 0388430402 | MK: MinhNhut2 | MC892 - P101A</p>
+                    </div>
+                  )}
 
                   {/* Social Login Divider */}
                   <div className="relative flex py-1 items-center">

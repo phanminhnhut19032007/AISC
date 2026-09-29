@@ -108,6 +108,31 @@ export default function AdminKycPage() {
     loadData();
   };
 
+  // Role Guard Check
+  if (currentUser && currentUser.role !== 'SUPERADMIN' && currentUser.role !== 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <Header title="Không Có Quyền Truy Cập" />
+        <div className="p-8 max-w-lg mx-auto text-center mt-12 bg-white rounded-3xl border border-red-100 shadow-xl p-8">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Truy Cập Bị Giới Hạn</h2>
+          <p className="text-sm text-slate-600 mb-6">
+            Trang Phê Duyệt Hồ Sơ KYC chỉ dành riêng cho tài khoản Quản trị viên Hệ thống (Admin). 
+            Tài khoản Chủ trọ / Cư dân không có quyền thực hiện thao tác này.
+          </p>
+          <a
+            href="/dashboard"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md transition-all"
+          >
+            Quay lại Tổng quan
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Header title="Bảng Quản Trị Duyệt KYC Chủ Trọ (Admin Portal)" />

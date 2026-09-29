@@ -434,13 +434,19 @@ export default function Header({ title }: { title: string }) {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const getDisplayName = () => {
+    if (user?.role === 'SUPERADMIN' || user?.role === 'ADMIN') {
+      return user.full_name || 'Quản trị viên Hệ thống';
+    }
     if (user?.role === 'TENANT') {
       return `${user.full_name}`;
     }
-    return user?.full_name || 'Admin';
+    return user?.full_name || 'Chủ trọ';
   };
 
   const getDisplayRole = () => {
+    if (user?.role === 'SUPERADMIN' || user?.role === 'ADMIN') {
+      return 'Quản trị viên Hệ thống';
+    }
     if (user?.role === 'TENANT') {
       return `Cư dân phòng #${roomNumber || '101'}`;
     }

@@ -30,11 +30,21 @@ async def seed(reset: bool = False):
         print("[Seed] Database reset and tables initialized")
 
     async with AsyncSessionLocal() as db:
-        # ── Owner ────────────────────────────────────────────────────────────
-        owner = User(
-            full_name="Chu tro",
+        # ── Admin / SuperAdmin ───────────────────────────────────────────────
+        admin = User(
+            full_name="Quản trị viên Minh Nhựt",
             phone="0388430402",
-            email="chuatro@smartrent.vn",
+            email="admin@reasy.vn",
+            hashed_password=hash_password("MinhNhut2007"),
+            role=UserRole.SUPERADMIN,
+        )
+        db.add(admin)
+
+        # ── Owner (Chủ trọ thường - không phải admin) ────────────────────────
+        owner = User(
+            full_name="Chủ trọ Minh Châu",
+            phone="0388430402",
+            email="chutro@smartrent.vn",
             hashed_password=hash_password("MinhNhut1"),
             role=UserRole.OWNER,
         )

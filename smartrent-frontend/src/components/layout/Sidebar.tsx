@@ -69,9 +69,13 @@ export default function Sidebar() {
 
   const filteredNavItems = navItems
     .filter((item) => {
+      // ONLY SUPERADMIN or ADMIN can see the KYC review portal
+      if (item.href === '/dashboard/admin/kyc') {
+        return user?.role === 'SUPERADMIN' || user?.role === 'ADMIN';
+      }
       if (user?.role === 'TENANT') {
-        // Tenant doesn't see buildings and KYC review tab
-        return item.href !== '/dashboard/buildings' && item.href !== '/dashboard/admin/kyc';
+        // Tenant doesn't see buildings
+        return item.href !== '/dashboard/buildings';
       }
       return true;
     })
@@ -119,7 +123,11 @@ export default function Sidebar() {
                 </span>
               </div>
               <p className="text-slate-400 text-[11px] truncate">
-                {user?.role === 'TENANT' ? 'Cư dân REASY' : 'Bảng điều khiển Admin'}
+                {user?.role === 'SUPERADMIN' || user?.role === 'ADMIN'
+                  ? 'Quản trị viên Hệ thống'
+                  : user?.role === 'TENANT'
+                  ? 'Cổng Cư dân'
+                  : 'Cổng Chủ trọ'}
               </p>
             </div>
           </Link>
