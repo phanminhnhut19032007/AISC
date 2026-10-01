@@ -196,7 +196,7 @@ function AdminLoginForm() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span>Đăng nhập Admin Portal</span>
+                  <span>Đăng nhập</span>
                   <ArrowRight className="w-4 h-4" />
                 </div>
               )}
