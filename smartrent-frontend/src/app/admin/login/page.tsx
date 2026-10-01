@@ -7,7 +7,7 @@ import { saveAuth, UserAuthData } from '@/lib/auth';
 
 function AdminLoginForm() {
   const router = useRouter();
-  const [form, setForm] = useState({ phone: '0388430402', password: '' });
+  const [form, setForm] = useState({ phone: '', password: '' });
   const [obscurePassword, setObscurePassword] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -68,11 +68,6 @@ function AdminLoginForm() {
     }
   };
 
-  const handleQuickFill = () => {
-    setForm({ phone: '0388430402', password: 'MinhNhut2007' });
-    setErrorMessage(null);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 selection:bg-indigo-500 selection:text-white relative overflow-hidden">
       {/* Ambient background glows */}
@@ -98,17 +93,10 @@ function AdminLoginForm() {
 
         {/* Card */}
         <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-white/5">
+          <div className="pb-2 border-b border-white/5">
             <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <Lock className="w-3.5 h-3.5 text-indigo-400" /> Đăng nhập Quản trị viên
             </span>
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              className="text-[10px] font-extrabold text-indigo-300 hover:text-white bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/30 px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-xs"
-            >
-              Điền nhanh (Minh Nhựt)
-            </button>
           </div>
 
           <form onSubmit={handleAdminLogin} className="space-y-3.5">
@@ -191,12 +179,6 @@ function AdminLoginForm() {
               )}
             </button>
           </form>
-
-          {/* Quick Info Box */}
-          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Tài khoản Admin hệ thống:</span>
-            <span className="font-mono text-indigo-300 font-bold">0388430402 / MinhNhut2007</span>
-          </div>
         </div>
 
         {/* Back to regular site link */}

@@ -21,8 +21,8 @@ function LoginForm() {
   
   // Login form
   const [form, setForm] = useState({ phone: '', password: '' });
-  const [buildingCode, setBuildingCode] = useState('MC892');
-  const [roomCode, setRoomCode] = useState('P101A');
+  const [buildingCode, setBuildingCode] = useState('');
+  const [roomCode, setRoomCode] = useState('');
   const [obscurePassword, setObscurePassword] = useState(true);
 
   // Register form
@@ -264,13 +264,11 @@ function LoginForm() {
     setSelectedRole(role);
     setErrorMessage(null);
     setForm({ phone: '', password: '' });
+    setBuildingCode('');
+    setRoomCode('');
     setRegStep('INPUT_FORM');
     if (role === 'SUPERADMIN') {
       setAuthMode('LOGIN');
-    }
-    if (role === 'TENANT') {
-      setBuildingCode('MC892');
-      setRoomCode('P101A');
     }
   };
 
@@ -1067,65 +1065,6 @@ function LoginForm() {
                           Đăng ký bằng số điện thoại
                         </button>
                       </p>
-                    </div>
-                  )}
-
-                  {/* Demo Account Quick-Fill Card */}
-                  {isAdmin && (
-                    <div className="mt-2.5 p-2.5 bg-indigo-950/5 border border-indigo-200 rounded-xl text-left">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-indigo-900 flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" /> Tài khoản Quản trị viên (Admin)
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setForm({ phone: '0388430402', password: 'MinhNhut2007' })}
-                          className="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 px-2 py-0.5 rounded-md cursor-pointer shadow-xs"
-                        >
-                          Điền nhanh
-                        </button>
-                      </div>
-                      <p className="text-[10.5px] text-indigo-700 font-mono mt-1">SĐT: 0388430402 | MK: MinhNhut2007</p>
-                    </div>
-                  )}
-
-                  {isOwner && (
-                    <div className="mt-2.5 p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-left">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
-                          <Building2 className="w-3.5 h-3.5 text-blue-600" /> Tài khoản Chủ trọ
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setForm({ phone: '0388430402', password: 'MinhNhut1' })}
-                          className="text-[10px] font-extrabold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-0.5 rounded-md cursor-pointer shadow-xs"
-                        >
-                          Điền nhanh
-                        </button>
-                      </div>
-                      <p className="text-[10.5px] text-blue-700 font-mono mt-1">SĐT: 0388430402 | MK: MinhNhut1</p>
-                    </div>
-                  )}
-
-                  {isTenant && (
-                    <div className="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-left">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-amber-600" /> Tài khoản Cư dân thuê phòng
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setForm({ phone: '0388430402', password: 'MinhNhut2' });
-                            setBuildingCode('MC892');
-                            setRoomCode('P101A');
-                          }}
-                          className="text-[10px] font-extrabold text-amber-700 hover:text-amber-900 bg-white border border-amber-200 px-2 py-0.5 rounded-md cursor-pointer shadow-xs"
-                        >
-                          Điền nhanh
-                        </button>
-                      </div>
-                      <p className="text-[10.5px] text-amber-700 font-mono mt-1">SĐT: 0388430402 | MK: MinhNhut2 | MC892 - P101A</p>
                     </div>
                   )}
 

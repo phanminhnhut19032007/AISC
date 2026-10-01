@@ -108,23 +108,6 @@ export default function AdminKycPage() {
     loadData();
   };
 
-  const handleQuickAdminLogin = () => {
-    const adminUser: UserAuthData = {
-      id: '00000000-0000-0000-0000-000000000001',
-      full_name: 'Quản trị viên Minh Nhựt',
-      phone: '0388430402',
-      role: 'SUPERADMIN',
-    };
-    saveAuth('mock_jwt_superadmin_0388430402', adminUser);
-    setCurrentUser(adminUser);
-    showAlert({
-      title: 'Đăng nhập Admin thành công',
-      message: 'Chào mừng Quản trị viên Minh Nhựt vào Trung tâm Phê duyệt KYC!',
-      type: 'success',
-    });
-    loadData();
-  };
-
   // Role Guard Check & Direct Admin Login Gateway
   if (!currentUser || (currentUser.role !== 'SUPERADMIN' && currentUser.role !== 'ADMIN')) {
     return (
@@ -147,39 +130,29 @@ export default function AdminKycPage() {
             <div className="p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl text-left text-xs text-amber-300">
               <p className="font-bold flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                Đang đăng nhập bằng tài khoản: {currentUser.full_name} ({currentUser.role === 'OWNER' ? 'Chủ trọ' : 'Cư dân'})
+                Đang đăng nhập bằng: {currentUser.full_name} ({currentUser.role === 'OWNER' ? 'Chủ trọ' : 'Cư dân'})
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Tài khoản hiện tại không có quyền Admin. Vui lòng bấm nút bên dưới để chuyển sang tài khoản Quản trị viên.
+                Tài khoản hiện tại không có quyền Quản trị viên. Vui lòng đăng nhập bằng tài khoản Admin để tiếp tục.
               </p>
             </div>
           )}
 
-          {/* Quick 1-Click Login Button for Admin */}
           <div className="space-y-2.5 pt-1">
-            <button
-              type="button"
-              onClick={handleQuickAdminLogin}
+            <a
+              href="/admin/login"
               className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
             >
               <ShieldCheck className="w-4.5 h-4.5" />
-              <span>Đăng nhập quyền Admin (0388430402)</span>
+              <span>Đăng nhập Quản trị viên (/admin/login)</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <a
-              href="/admin/login"
-              className="block w-full py-2.5 text-xs font-bold text-slate-400 hover:text-white transition-colors text-center"
-            >
-              Mở trang đăng nhập Admin riêng biệt (/admin/login)
             </a>
           </div>
 
-          <div className="pt-3 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+          <div className="pt-3 border-t border-slate-700/60 text-center text-[11px] text-slate-400">
             <a href="/dashboard" className="text-slate-400 hover:text-slate-200">
-              ← Về bảng điều khiển
+              ← Quay về Bảng điều khiển
             </a>
-            <span className="font-mono text-indigo-300">0388430402 / MinhNhut2007</span>
           </div>
         </div>
       </div>
