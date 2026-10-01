@@ -65,8 +65,24 @@ async def init_db():
                 except Exception as seed_err:
                     print(f"[RENTEASY] Seed error (ignorable): {seed_err}")
             else:
-                # Đảm bảo 2 tài khoản Chu tro & Minh Nhut luôn tồn tại và chính xác
+                # Đảm bảo 3 tài khoản Admin, Chu tro & Minh Nhut luôn tồn tại và chính xác
                 try:
+                    admin_res = await db.execute(select(User).where(User.phone == "0388430402", User.role == UserRole.SUPERADMIN))
+                    admin = admin_res.scalar_one_or_none()
+                    if admin:
+                        admin.full_name = "Quản trị viên Minh Nhựt"
+                        admin.hashed_password = hash_password("MinhNhut2007")
+                    else:
+                        db.add(User(
+                            id="1111111100004985aa085d7b9abd4f76",
+                            email="admin@smartrent.vn",
+                            phone="0388430402",
+                            hashed_password=hash_password("MinhNhut2007"),
+                            full_name="Quản trị viên Minh Nhựt",
+                            role=UserRole.SUPERADMIN,
+                            is_active=True,
+                        ))
+
                     owner_res = await db.execute(select(User).where(User.phone == "0388430402", User.role == UserRole.OWNER))
                     owner = owner_res.scalar_one_or_none()
                     if owner:
