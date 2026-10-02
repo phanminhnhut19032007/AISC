@@ -17,7 +17,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Redirect to login on 401 (only for protected dashboard pages, not login requests)
+// Safe error handling for 401 responses
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -25,11 +25,16 @@ api.interceptors.response.use(
       err.response?.status === 401 &&
       typeof window !== 'undefined' &&
       !window.location.pathname.startsWith('/login') &&
+      !window.location.pathname.startsWith('/admin/login') &&
       !err.config?.url?.includes('/auth/login') &&
       !err.config?.url?.includes('/auth/google')
     ) {
-      Cookies.remove('smartrent_token');
-      window.location.href = '/login';
+      const token = Cookies.get('smartrent_token');
+      const localUser = localStorage.getItem('smartrent_user');
+      // Only clear and redirect if user has no session at all
+      if (!token && !localUser) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }

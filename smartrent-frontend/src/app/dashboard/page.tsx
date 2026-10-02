@@ -43,7 +43,7 @@ const TICKET_STATUS_LABEL: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(() => getUser());
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
