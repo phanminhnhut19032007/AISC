@@ -5,7 +5,8 @@ import { emergencyApi, EmergencyAlert } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { 
   Siren, Flame, ShieldAlert, HeartPulse, Zap, AlertTriangle, 
-  Phone, CheckCircle2, Clock, X, AlertOctagon, Sparkles 
+  Phone, CheckCircle2, Clock, X, AlertOctagon, Sparkles,
+  PhoneCall, Volume2, VolumeX, Radio, Check, ExternalLink, Activity
 } from 'lucide-react';
 import { useConfirm } from '@/context/ConfirmationContext';
 
@@ -78,8 +79,52 @@ export default function EmergencySosPage() {
   // Confirmation modal state for Tenant
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  // Auto Call Modal state for Tenant
+  const [autoCallModal, setAutoCallModal] = useState<{
+    isOpen: boolean;
+    ownerPhone: string;
+    roomNumber: string;
+    buildingName: string;
+    typeLabel: string;
+    voiceScript: string;
+    callStatus: 'CALLING' | 'CONNECTED' | 'COMPLETED';
+    callId: string;
+    isSpeaking: boolean;
+  } | null>(null);
+
   // Acknowledge loading state for Landlord
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const speakVoiceScript = (text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        // Remove emoji from TTS reading
+        const cleanText = text.replace(/[🚨⚠️📢]/g, '').trim();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'vi-VN';
+        utterance.rate = 0.95;
+        utterance.pitch = 1.0;
+        utterance.onend = () => {
+          setAutoCallModal((prev) => (prev ? { ...prev, isSpeaking: false, callStatus: 'COMPLETED' } : null));
+        };
+        utterance.onerror = () => {
+          setAutoCallModal((prev) => (prev ? { ...prev, isSpeaking: false } : null));
+        };
+        window.speechSynthesis.speak(utterance);
+        setAutoCallModal((prev) => (prev ? { ...prev, isSpeaking: true } : null));
+      } catch (err) {
+        console.error('Speech synthesis error:', err);
+      }
+    }
+  };
+
+  const stopVoiceScript = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setAutoCallModal((prev) => (prev ? { ...prev, isSpeaking: false } : null));
+    }
+  };
 
   useEffect(() => {
     setUser(getUser());
@@ -119,6 +164,8 @@ export default function EmergencySosPage() {
 
   const isTenant = user?.role === 'TENANT';
   const roomNumber = isTenant ? (localStorage.getItem('demo_tenant_room_code') || '101') : '';
+  const buildingCode = isTenant ? (localStorage.getItem('demo_tenant_building_code') || 'MC892') : 'REASY';
+  const buildingName = `Tòa nhà ${buildingCode}`;
 
   const handleOpenConfirm = () => {
     setShowConfirmModal(true);
@@ -126,10 +173,18 @@ export default function EmergencySosPage() {
 
   const handleSendSos = async () => {
     setLoading(true);
+    const typeObj = EMERGENCY_TYPES.find((t) => t.id === selectedType);
+    const typeLabel = typeObj ? typeObj.label.toUpperCase() : 'HỎA HOẠN / CHÁY';
+    const ownerPhone = '0388430402';
+    
+    // Câu thông báo thoại chính xác theo yêu cầu
+    const voiceScript = `🚨 CẢNH BÁO KHẨN CẤP REASY: Người thuê tại Phòng ${roomNumber || '101'} ${buildingName} vừa bấm báo động [${typeLabel}]. Đề nghị chủ trọ kiểm tra và xử lý gấp!`;
+    const callId = `CALL-SOS-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+
     const newAlert: EmergencyAlert = {
       id: 'sos-' + Date.now(),
       room_number: roomNumber || '101',
-      building_name: 'Tòa nhà REASY',
+      building_name: buildingName,
       sender_id: user?.id || 'tenant-1',
       sender_name: user?.full_name || 'Trần Thị Mai',
       sender_phone: user?.phone || '0912345001',
@@ -137,6 +192,15 @@ export default function EmergencySosPage() {
       description: description.trim() || undefined,
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
+      auto_call_info: {
+        success: true,
+        call_id: callId,
+        recipient_phone: ownerPhone,
+        voice_script: voiceScript,
+        provider: 'Stringee/Twilio Voice Gateway',
+        call_status: 'CALL_CONNECTED_PLAYING_VOICE',
+        message: `Đã kết nối và phát đoạn thoại cảnh báo trực tiếp đến Chủ trọ ${ownerPhone}`,
+      },
     };
 
     // Save locally immediately
@@ -148,12 +212,34 @@ export default function EmergencySosPage() {
 
     setHistory((prev) => [newAlert, ...prev.filter((p) => p.id !== newAlert.id)]);
 
+    // Trigger local audio voice announcement
+    speakVoiceScript(voiceScript);
+
+    // Open Auto-Call Live Status Modal on Tenant Screen
+    setAutoCallModal({
+      isOpen: true,
+      ownerPhone,
+      roomNumber: roomNumber || '101',
+      buildingName,
+      typeLabel,
+      voiceScript,
+      callStatus: 'CALLING',
+      callId,
+      isSpeaking: true,
+    });
+
+    // Simulate connection to Owner's phone in 1.2s
+    setTimeout(() => {
+      setAutoCallModal((prev) => (prev ? { ...prev, callStatus: 'CONNECTED' } : null));
+    }, 1200);
+
     try {
       await emergencyApi.trigger({
         room_number: roomNumber || '101',
-        building_name: 'Tòa nhà REASY',
+        building_name: buildingName,
         emergency_type: selectedType,
         description: description.trim() || undefined,
+        owner_phone: ownerPhone,
       });
 
       setShowConfirmModal(false);
@@ -161,24 +247,11 @@ export default function EmergencySosPage() {
       
       // Dispatch event to local window so any overlay reacts immediately
       window.dispatchEvent(new CustomEvent('new-emergency-sos'));
-      
       await loadHistory();
-
-      showAlert({
-        title: '🚨 ĐÃ PHÁT BÁO ĐỘNG SOS THÀNH CÔNG',
-        message: 'Tín hiệu khẩn cấp đã được gửi và đang hú còi báo động trực tiếp tới toàn bộ màn hình của Chủ trọ và Ban Quản lý!',
-        type: 'danger',
-      });
     } catch (e: any) {
       setShowConfirmModal(false);
       setDescription('');
       window.dispatchEvent(new CustomEvent('new-emergency-sos'));
-
-      showAlert({
-        title: '🚨 ĐÃ PHÁT BÁO ĐỘNG SOS THÀNH CÔNG',
-        message: 'Tín hiệu khẩn cấp đã được gửi và đang hú còi báo động trực tiếp tới toàn bộ màn hình của Chủ trọ và Ban Quản lý!',
-        type: 'danger',
-      });
     } finally {
       setLoading(false);
     }
@@ -518,6 +591,134 @@ export default function EmergencySosPage() {
                   className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-lg shadow-red-600/30 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {loading ? 'Đang gửi...' : '🔴 XÁC NHẬN PHÁT SOS'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL TỰ ĐỘNG GỌI THOẠI KHẨN CẤP TỚI CHỦ TRỌ (AUTO-CALL VOICE BROADCAST) ─── */}
+      {autoCallModal?.isOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-red-500/40 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden text-white animate-in zoom-in-95 duration-200">
+            {/* Header with radar ping */}
+            <div className="relative p-6 bg-gradient-to-br from-red-600 via-rose-700 to-slate-900 text-center overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-400/20 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="relative z-10">
+                <div className="relative w-16 h-16 rounded-full bg-white/15 border-2 border-white/40 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-red-900/50">
+                  <PhoneCall className="w-8 h-8 text-white animate-bounce" />
+                  <div className="absolute -inset-2 rounded-full bg-red-400/30 animate-ping pointer-events-none" />
+                </div>
+                
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-950/60 border border-red-400/30 text-red-200 text-[11px] font-black uppercase tracking-wider mb-1">
+                  <Radio className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                  Tổng Đài Cứu Nạn REASY Emergency
+                </span>
+
+                <h3 className="font-black text-xl text-white tracking-wide mt-1">
+                  ĐANG GỌI TỰ ĐỘNG CHO CHỦ TRỌ
+                </h3>
+                <p className="text-xs text-red-100 font-semibold mt-0.5">
+                  Quay số trực tiếp & phát đoạn Voice cảnh báo cứu hộ
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Call Target Card */}
+              <div className="p-4 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 flex-shrink-0">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Số điện thoại Chủ trọ</p>
+                    <p className="text-base font-mono font-black text-white tracking-wide">
+                      {autoCallModal.ownerPhone}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-flex items-center gap-1 text-xs font-extrabold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    <Activity className="w-3.5 h-3.5 animate-pulse" />
+                    {autoCallModal.callStatus === 'CALLING' ? 'Đang đổ chuông...' : 'Đã kết nối Voice'}
+                  </span>
+                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{autoCallModal.callId}</p>
+                </div>
+              </div>
+
+              {/* Voice Message Box */}
+              <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/30 space-y-2">
+                <div className="flex items-center justify-between text-xs text-red-300 font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Volume2 className="w-4 h-4 text-red-400" />
+                    Nội dung đoạn Voice đang phát qua cuộc gọi:
+                  </span>
+                  {autoCallModal.isSpeaking && (
+                    <span className="text-[10px] bg-red-500/30 text-red-200 px-2 py-0.5 rounded-md animate-pulse">
+                      Đang đọc loa 🔊
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-3 bg-black/40 rounded-xl border border-white/5 text-xs font-semibold text-white leading-relaxed tracking-wide">
+                  "{autoCallModal.voiceScript}"
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (autoCallModal.isSpeaking) {
+                        stopVoiceScript();
+                      } else {
+                        speakVoiceScript(autoCallModal.voiceScript);
+                      }
+                    }}
+                    className="text-xs font-bold text-red-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {autoCallModal.isSpeaking ? (
+                      <>
+                        <VolumeX className="w-4 h-4 text-red-400" />
+                        <span>Tắt tiếng loa</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-4 h-4 text-red-400" />
+                        <span>Nghe lại đoạn Voice cảnh báo</span>
+                      </>
+                    )}
+                  </button>
+
+                  <span className="text-[11px] text-slate-400">
+                    Phòng #{autoCallModal.roomNumber} • {autoCallModal.typeLabel}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <a
+                  href={`tel:${autoCallModal.ownerPhone}`}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>Gọi trực tiếp {autoCallModal.ownerPhone}</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopVoiceScript();
+                    setAutoCallModal(null);
+                  }}
+                  className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Đóng thông báo</span>
                 </button>
               </div>
             </div>

@@ -260,6 +260,16 @@ export const chatApi = {
 };
 
 // ---- Emergency SOS API ----
+export interface AutoCallInfo {
+  success: boolean;
+  call_id: string;
+  recipient_phone: string;
+  voice_script: string;
+  provider: string;
+  call_status: string;
+  message: string;
+}
+
 export interface EmergencyAlert {
   id: string;
   room_number: string;
@@ -272,6 +282,7 @@ export interface EmergencyAlert {
   status: 'ACTIVE' | 'ACKNOWLEDGED' | 'RESOLVED';
   acknowledged_by?: string;
   created_at: string;
+  auto_call_info?: AutoCallInfo;
 }
 
 export const emergencyApi = {
@@ -280,7 +291,15 @@ export const emergencyApi = {
     building_name?: string;
     emergency_type: string;
     description?: string;
+    owner_phone?: string;
   }) => api.post<EmergencyAlert>('/emergency/sos', data),
+  autoCallOwner: (data: {
+    room_number?: string;
+    building_name?: string;
+    emergency_type: string;
+    description?: string;
+    owner_phone?: string;
+  }) => api.post<AutoCallInfo>('/emergency/auto-call-owner', data),
   getActive: () => api.get<EmergencyAlert[]>('/emergency/active'),
   list: () => api.get<EmergencyAlert[]>('/emergency/list'),
   acknowledge: (id: string) => api.post<EmergencyAlert>(`/emergency/${id}/acknowledge`),

@@ -11,6 +11,17 @@ class EmergencyCreateRequest(BaseModel):
     building_name: Optional[str] = "Tòa nhà REASY"
     emergency_type: EmergencyType = EmergencyType.OTHER
     description: Optional[str] = None
+    owner_phone: Optional[str] = "0388430402"
+
+
+class AutoCallResponse(BaseModel):
+    success: bool
+    call_id: str
+    recipient_phone: str
+    voice_script: str
+    provider: str
+    call_status: str
+    message: str
 
 
 class EmergencyAlertOut(BaseModel):
@@ -27,3 +38,5 @@ class EmergencyAlertOut(BaseModel):
     status: EmergencyStatus
     acknowledged_by: Optional[str] = None
     created_at: datetime
+    auto_call_info: Optional[AutoCallResponse] = None
+
