@@ -52,7 +52,7 @@ const PRODUCTS: Product[] = [
     originalPrice: 384000,
     promoPrice: 295000,
     description: 'Sữa tươi tiệt trùng Vinamilk 100% có đường, thơm ngon nhiều dinh dưỡng.',
-    image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'
+    image: '/images/unipack/p1.jpg'
   },
   {
     id: 'p2',
@@ -63,7 +63,7 @@ const PRODUCTS: Product[] = [
     originalPrice: 220000,
     promoPrice: 155000,
     description: 'Snack khoai tây Lays giòn rụm với các vị khoai tây tự nhiên, sườn nướng, tảo biển.',
-    image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'
+    image: '/images/unipack/p2.jpg'
   },
   {
     id: 'p3',
@@ -74,7 +74,7 @@ const PRODUCTS: Product[] = [
     originalPrice: 145000,
     promoPrice: 118000,
     description: 'Mỳ ăn liền quốc dân Hảo Hảo hương vị Tôm Chua Cay chua thanh, cay nồng hấp dẫn.',
-    image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'
+    image: '/images/unipack/p3.jpg'
   },
   {
     id: 'p4',
@@ -85,7 +85,7 @@ const PRODUCTS: Product[] = [
     originalPrice: 240000,
     promoPrice: 185000,
     description: 'Nước giải khát có ga Coca-Cola chính hãng mang lại cảm giác sảng khoái tức thì.',
-    image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'
+    image: '/images/unipack/p4.jpg'
   },
   {
     id: 'p5',
@@ -96,9 +96,12 @@ const PRODUCTS: Product[] = [
     originalPrice: 120000,
     promoPrice: 89000,
     description: 'Nước uống đóng chai Aquafina tinh khiết được lọc qua hệ thống tuần hoàn khép kín.',
-    image: 'https://images.unsplash.com/photo-1616180373449-33b006093557?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'
+    image: '/images/unipack/p5.jpg'
   }
 ];
+
+
+const FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-family='sans-serif' font-size='16' font-weight='600'%3EUniPack%3C/text%3E%3C/svg%3E";
 
 export default function UniPackPage() {
   const { confirm, showAlert } = useConfirm();
@@ -168,7 +171,27 @@ export default function UniPackPage() {
     // Load cart
     const savedCart = localStorage.getItem('unipack_cart');
     if (savedCart) {
-      setCart(JSON.parse(savedCart));
+      try {
+        const rawCart: CartItem[] = JSON.parse(savedCart);
+        const syncedCart = rawCart.map((item) => {
+          const matched = PRODUCTS.find((p) => p.id === item.product.id);
+          return {
+            ...item,
+            product: matched
+              ? {
+                  ...item.product,
+                  image: matched.image,
+                  name: matched.name,
+                  originalPrice: matched.originalPrice,
+                  promoPrice: matched.promoPrice,
+                }
+              : item.product,
+          };
+        });
+        setCart(syncedCart);
+      } catch (e) {
+        // ignore
+      }
     }
   }, []);
 
@@ -502,7 +525,7 @@ export default function UniPackPage() {
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div>
                   <div className="h-44 relative bg-slate-100 overflow-hidden">
-                    <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                    <img src={p.image} alt={p.name} onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE; }} className="w-full h-full object-cover" />
                     <span className="absolute top-3 left-3 bg-red-500 text-white font-extrabold text-xs px-2.5 py-1 rounded-full shadow">
                       Tiết kiệm {discount}%
                     </span>
@@ -775,7 +798,7 @@ export default function UniPackPage() {
                         />
                         
                         {/* Image */}
-                        <img src={item.product.image} alt={item.product.name} className="w-16 h-16 object-cover rounded-xl flex-shrink-0" />
+                        <img src={item.product.image} alt={item.product.name} onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE; }} className="w-16 h-16 object-cover rounded-xl flex-shrink-0" />
 
                         {/* Title details */}
                         <div className="flex-1 space-y-0.5">
