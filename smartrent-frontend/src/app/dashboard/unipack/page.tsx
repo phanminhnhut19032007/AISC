@@ -456,7 +456,7 @@ export default function UniPackPage() {
             </p>
             <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold">
               <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
-                <Clock className="w-4 h-4 text-yellow-300" /> Hạn chót đặt: Trước 22h Thứ Bảy hàng tuần
+                <Clock className="w-4 h-4 text-yellow-300" /> Hạn chót đặt: Trước 22g Thứ Sáu hàng tuần
               </div>
               <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
                 <Calendar className="w-4 h-4 text-emerald-300" /> Vận chuyển: Giao đồng loạt vào Chủ Nhật
